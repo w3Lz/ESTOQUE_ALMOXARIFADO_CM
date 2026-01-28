@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Estoque - Almoxarifado</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- MSAL.js for Authentication -->
+    <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-boxes"></i>
+                <span>Estoque</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" onclick="app.navigate('dashboard')">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </li>
+                <li onclick="app.navigate('products')">
+                    <i class="fas fa-box"></i> Produtos
+                </li>
+                <li onclick="app.navigate('entries')">
+                    <i class="fas fa-arrow-circle-down"></i> Entradas
+                </li>
+                <li onclick="app.navigate('exits')">
+                    <i class="fas fa-arrow-circle-up"></i> Saídas
+                </li>
+            </ul>
+            <div class="user-info">
+                <div id="auth-section">
+                    <button id="login-btn" class="btn btn-primary" onclick="auth.signIn()">
+                        <i class="fab fa-microsoft"></i> Login Admin
+                    </button>
+                    <div id="user-profile" class="hidden">
+                        <span id="username">Usuário</span>
+                        <button class="btn btn-sm btn-outline" onclick="auth.signOut()">Sair</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <h2 id="page-title">Visão Geral</h2>
+                <div class="header-actions">
+                    <span id="last-sync" class="text-muted">Sincronizado: --:--</span>
+                    <button class="btn btn-icon" onclick="app.syncData()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Views -->
+            <div id="view-dashboard" class="view active">
+                <div class="cards-container">
+                    <div class="card">
+                        <h3>Total de Itens</h3>
+                        <p class="big-number" id="total-items">0</p>
+                    </div>
+                    <div class="card alert">
+                        <h3>Estoque Baixo</h3>
+                        <p class="big-number" id="low-stock-count">0</p>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <h3>Saldo Atual</h3>
+                    <input type="text" id="search-dashboard" placeholder="Buscar produto..." onkeyup="app.filterTable('dashboard-table', this.value)">
+                    <table id="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Cód.</th>
+                                <th>Produto</th>
+                                <th>Unid.</th>
+                                <th>Tipo</th>
+                                <th>Saldo</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-products" class="view hidden">
+                <div class="view-header">
+                    <h3>Cadastro de Produtos</h3>
+                    <button class="btn btn-primary" onclick="ui.showModal('modal-product')">
+                        <i class="fas fa-plus"></i> Novo Produto
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table id="products-table">
+                        <thead>
+                            <tr>
+                                <th>Cód.</th>
+                                <th>Nome</th>
+                                <th>Unid.</th>
+                                <th>Tipo</th>
+                                <th>Estoque Mín.</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-entries" class="view hidden">
+                <div class="view-header">
+                    <h3>Registrar Entrada</h3>
+                </div>
+                <form id="form-entry" onsubmit="app.handleEntry(event)">
+                    <div class="row">
+                        <div class="form-group half">
+                            <label>Data</label>
+                            <input type="date" id="entry-date" required class="form-control">
+                        </div>
+                        <div class="form-group half">
+                            <label>Produto</label>
+                            <select id="entry-product-id" required class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group half">
+                            <label>Quantidade</label>
+                            <input type="number" id="entry-qty" min="0.01" step="0.01" required class="form-control">
+                        </div>
+                        <div class="form-group half">
+                            <label>Origem (Fornecedor)</label>
+                            <input type="text" id="entry-origin" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Usuário Responsável</label>
+                        <input type="text" id="entry-user" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Observação</label>
+                        <input type="text" id="entry-obs" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-success">Confirmar Entrada</button>
+                </form>
+                
+                <div class="history-section">
+                    <h4>Últimas Entradas</h4>
+                    <table id="entries-table" class="small-table">
+                        <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Origem</th><th>Usuário</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-exits" class="view hidden">
+                <div class="view-header">
+                    <h3>Registrar Saída</h3>
+                </div>
+                <form id="form-exit" onsubmit="app.handleExit(event)">
+                    <div class="row">
+                        <div class="form-group half">
+                            <label>Data</label>
+                            <input type="date" id="exit-date" required class="form-control">
+                        </div>
+                        <div class="form-group half">
+                            <label>Produto</label>
+                            <select id="exit-product-id" required class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group half">
+                            <label>Quantidade</label>
+                            <input type="number" id="exit-qty" min="0.01" step="0.01" required class="form-control">
+                        </div>
+                        <div class="form-group half">
+                            <label>Destino (Setor/Obra)</label>
+                            <input type="text" id="exit-dest" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Usuário Responsável</label>
+                        <input type="text" id="exit-user" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Observação</label>
+                        <input type="text" id="exit-obs" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-danger">Confirmar Saída</button>
+                </form>
+
+                <div class="history-section">
+                    <h4>Últimas Saídas</h4>
+                    <table id="exits-table" class="small-table">
+                        <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Destino</th><th>Usuário</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-product" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="ui.closeModal('modal-product')">&times;</span>
+            <h3>Novo Produto</h3>
+            <form id="form-product" onsubmit="app.saveProduct(event)">
+                <input type="hidden" id="prod-id">
+                <div class="form-group">
+                    <label>Código Interno</label>
+                    <input type="text" id="prod-code" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="prod-name" required class="form-control">
+                </div>
+                <div class="row">
+                    <div class="form-group half">
+                        <label>Unidade</label>
+                        <select id="prod-unit" class="form-control">
+                            <option value="UN">UN</option>
+                            <option value="KG">KG</option>
+                            <option value="MT">MT</option>
+                            <option value="CX">CX</option>
+                            <option value="L">L</option>
+                            <option value="PCT">PCT</option>
+                        </select>
+                    </div>
+                    <div class="form-group half">
+                        <label>Tipo</label>
+                        <select id="prod-type" class="form-control">
+                            <option value="Material">Material</option>
+                            <option value="EPI">EPI</option>
+                            <option value="Ferramenta">Ferramenta</option>
+                            <option value="Comida">Comida</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Estoque Mínimo</label>
+                    <input type="number" id="prod-min" min="0" value="5" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
