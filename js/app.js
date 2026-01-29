@@ -296,7 +296,7 @@ const app = {
             { field: 'UNIDADE' },
             { field: 'TIPO' },
             { field: 'ESTOQUE_MINIMO' },
-            { field: 'actions', render: (row) => `<button class="btn btn-sm btn-outline" style="color:blue; border-color:blue" onclick="app.editProduct('${row.ID}')">Editar</button>` }
+            { field: 'actions', render: (row) => `<div style="text-align: center;"><button class="btn btn-sm btn-outline" style="color:var(--primary-blue); border-color:var(--primary-blue)" onclick="app.editProduct('${row.ID}')"><i class="fas fa-edit"></i></button></div>` }
         ];
         ui.renderTable('products-table', filtered, prodCols);
     },

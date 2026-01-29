@@ -109,38 +109,39 @@
                 </div>
             </div>
 
-            <div id="view-products" class="view hidden">
-                <div class="view-header">
-                    <h3>Cadastro de Produtos</h3>
-                    <button class="btn btn-primary" onclick="app.updateDatalists(); ui.showModal('modal-product')">
-                        <i class="fas fa-plus"></i> Novo Produto
-                    </button>
-                </div>
-                
-                <!-- Search and Filter Bar -->
-                <div class="search-bar-container">
-                    <div class="search-input-wrapper">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="product-search" placeholder="Buscar produto..." onkeyup="app.filterProducts()">
+                <!-- Toolbar (Header + Search + Filter) -->
+                <div class="toolbar-container">
+                    <div class="toolbar-left">
+                        <h3>Produtos</h3>
+                        <span class="item-count" id="product-count">0 itens</span>
                     </div>
-                    <select id="product-type-filter" class="form-control filter-select" onchange="app.filterProducts()">
-                        <option value="">Todos os Tipos</option>
-                        <!-- Populated by JS -->
-                    </select>
-                    <span class="item-count" id="product-count">0 itens</span>
+                    
+                    <div class="toolbar-right">
+                        <div class="search-input-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="product-search" placeholder="Buscar..." onkeyup="app.filterProducts()">
+                        </div>
+                        <select id="product-type-filter" class="form-control filter-select" onchange="app.filterProducts()">
+                            <option value="">Todos os Tipos</option>
+                            <!-- Populated by JS -->
+                        </select>
+                        <button class="btn btn-primary" onclick="app.updateDatalists(); ui.showModal('modal-product')">
+                            <i class="fas fa-plus"></i> Novo
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container">
                     <table id="products-table">
                         <thead>
                             <tr>
-                                <th style="width: 50px;">#</th>
-                                <th>Cód.</th>
-                                <th>Nome</th>
-                                <th>Unid.</th>
-                                <th>Tipo</th>
-                                <th>Estoque Mín.</th>
-                                <th>Ações</th>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 10%;">Cód.</th>
+                                <th style="width: 30%;">Nome</th>
+                                <th style="width: 10%;">Unid.</th>
+                                <th style="width: 15%;">Tipo</th>
+                                <th style="width: 15%;">Estoque Mín.</th>
+                                <th style="width: 15%; text-align: center;">Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
