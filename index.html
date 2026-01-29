@@ -229,7 +229,7 @@
                 <input type="hidden" id="prod-id">
                 <div class="form-group">
                     <label>Código Interno</label>
-                    <input type="text" id="prod-code" required class="form-control">
+                    <input type="text" id="prod-code" class="form-control">
                 </div>
                 <div class="form-group">
                     <label>Nome</label>
@@ -238,23 +238,17 @@
                 <div class="row">
                     <div class="form-group half">
                         <label>Unidade</label>
-                        <select id="prod-unit" class="form-control">
-                            <option value="UN">UN</option>
-                            <option value="KG">KG</option>
-                            <option value="MT">MT</option>
-                            <option value="CX">CX</option>
-                            <option value="L">L</option>
-                            <option value="PCT">PCT</option>
-                        </select>
+                        <input type="text" id="prod-unit" list="unit-list" class="form-control" placeholder="Selecione ou digite...">
+                        <datalist id="unit-list">
+                            <!-- Populated by JS -->
+                        </datalist>
                     </div>
                     <div class="form-group half">
                         <label>Tipo</label>
-                        <select id="prod-type" class="form-control">
-                            <option value="Material">Material</option>
-                            <option value="EPI">EPI</option>
-                            <option value="Ferramenta">Ferramenta</option>
-                            <option value="Comida">Comida</option>
-                        </select>
+                        <input type="text" id="prod-type" list="type-list" class="form-control" placeholder="Selecione ou digite...">
+                        <datalist id="type-list">
+                            <!-- Populated by JS -->
+                        </datalist>
                     </div>
                 </div>
                 <div class="form-group">

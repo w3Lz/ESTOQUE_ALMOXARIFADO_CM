@@ -132,6 +132,36 @@ const app = {
         document.getElementById('low-stock-count').textContent = lowStock;
     },
 
+    updateDatalists: () => {
+        // Collect unique values
+        const units = new Set(['UN', 'KG', 'MT', 'CX', 'L', 'PCT']);
+        const types = new Set(['Material', 'EPI', 'Ferramenta', 'Comida']);
+        
+        app.state.products.forEach(p => {
+            if (p.UNIDADE) units.add(p.UNIDADE);
+            if (p.TIPO) types.add(p.TIPO);
+        });
+
+        // Populate Datalists
+        const unitList = document.getElementById('unit-list');
+        const typeList = document.getElementById('type-list');
+        
+        unitList.innerHTML = '';
+        typeList.innerHTML = '';
+        
+        units.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            unitList.appendChild(opt);
+        });
+        
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            typeList.appendChild(opt);
+        });
+    },
+
     updateUI: () => {
         // Dashboard
         const dashboardCols = [
@@ -172,6 +202,9 @@ const app = {
         };
         populateSelect('entry-product-id');
         populateSelect('exit-product-id');
+
+        // Update Datalists
+        app.updateDatalists();
 
         // History
         const histCols = [
