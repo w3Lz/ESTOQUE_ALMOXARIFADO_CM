@@ -142,24 +142,40 @@ const app = {
             if (p.TIPO) types.add(p.TIPO);
         });
 
-        // Populate Datalists
-        const unitList = document.getElementById('unit-list');
-        const typeList = document.getElementById('type-list');
+        // Populate Selects
+        const populate = (id, set) => {
+            const el = document.getElementById(id);
+            el.innerHTML = '';
+            set.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                el.appendChild(opt);
+            });
+            // Add 'Outro' option
+            const other = document.createElement('option');
+            other.value = 'OTHER';
+            other.textContent = 'Outro (Adicionar Novo)...';
+            el.appendChild(other);
+        };
+
+        populate('prod-unit', units);
+        populate('prod-type', types);
+    },
+
+    toggleCustomInput: (id) => {
+        const select = document.getElementById(id);
+        const customInput = document.getElementById(id + '-custom');
         
-        unitList.innerHTML = '';
-        typeList.innerHTML = '';
-        
-        units.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u;
-            unitList.appendChild(opt);
-        });
-        
-        types.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            typeList.appendChild(opt);
-        });
+        if (select.value === 'OTHER') {
+            customInput.classList.remove('hidden');
+            customInput.required = true;
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+            customInput.required = false;
+            customInput.value = '';
+        }
     },
 
     updateUI: () => {
@@ -260,8 +276,17 @@ const app = {
         const id = document.getElementById('prod-id').value;
         const code = document.getElementById('prod-code').value;
         const name = document.getElementById('prod-name').value;
-        const unit = document.getElementById('prod-unit').value;
-        const type = document.getElementById('prod-type').value;
+        
+        let unit = document.getElementById('prod-unit').value;
+        if (unit === 'OTHER') {
+            unit = document.getElementById('prod-unit-custom').value;
+        }
+
+        let type = document.getElementById('prod-type').value;
+        if (type === 'OTHER') {
+            type = document.getElementById('prod-type-custom').value;
+        }
+
         const min = document.getElementById('prod-min').value;
         
         ui.toggleLoading(true);
@@ -313,8 +338,52 @@ const app = {
         document.getElementById('prod-id').value = p.ID;
         document.getElementById('prod-code').value = p.CODIGO || "";
         document.getElementById('prod-name').value = p.NOME || "";
-        document.getElementById('prod-unit').value = p.UNIDADE || "UN";
-        document.getElementById('prod-type').value = p.TIPO || "Material";
+        
+        // Handle Unit
+        const unitSelect = document.getElementById('prod-unit');
+        const unitCustom = document.getElementById('prod-unit-custom');
+        
+        // Check if value exists in options
+        let unitExists = false;
+        for (let i = 0; i < unitSelect.options.length; i++) {
+            if (unitSelect.options[i].value === p.UNIDADE) {
+                unitExists = true;
+                break;
+            }
+        }
+
+        if (unitExists) {
+            unitSelect.value = p.UNIDADE;
+            unitCustom.classList.add('hidden');
+        } else {
+            // New unit not in list yet (or list not updated), technically shouldn't happen if updateDatalists runs, 
+            // but safe fallback:
+            unitSelect.value = 'OTHER';
+            unitCustom.classList.remove('hidden');
+            unitCustom.value = p.UNIDADE;
+        }
+
+        // Handle Type
+        const typeSelect = document.getElementById('prod-type');
+        const typeCustom = document.getElementById('prod-type-custom');
+        
+        let typeExists = false;
+        for (let i = 0; i < typeSelect.options.length; i++) {
+            if (typeSelect.options[i].value === p.TIPO) {
+                typeExists = true;
+                break;
+            }
+        }
+
+        if (typeExists) {
+            typeSelect.value = p.TIPO;
+            typeCustom.classList.add('hidden');
+        } else {
+            typeSelect.value = 'OTHER';
+            typeCustom.classList.remove('hidden');
+            typeCustom.value = p.TIPO;
+        }
+
         document.getElementById('prod-min').value = p.ESTOQUE_MINIMO || 0;
         
         ui.showModal('modal-product');
