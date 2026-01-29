@@ -55,31 +55,28 @@ const ui = {
         }
     },
     
-    renderTable: (tableId, data, columns, actionsCallback) => {
-        const tbody = document.querySelector(`#${tableId} tbody`);
-        if (!tbody) return;
-        
+    renderTable: (tableId, data, columns) => {
+        const table = document.getElementById(tableId);
+        const tbody = table.querySelector('tbody');
         tbody.innerHTML = '';
-        
+
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Nenhum dado encontrado</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${columns.length}" class="text-center">Nenhum dado encontrado</td></tr>`;
             return;
         }
 
-        data.forEach(item => {
+        data.forEach((row, index) => { // Added index for row numbering
             const tr = document.createElement('tr');
-            
             columns.forEach(col => {
                 const td = document.createElement('td');
                 if (col.render) {
-                    td.innerHTML = col.render(item);
+                    td.innerHTML = col.render(row, index); // Pass index to render function
                 } else {
-                    td.textContent = item[col.field] || '';
+                    td.textContent = row[col.field] || '-';
                 }
                 tr.appendChild(td);
             });
-            
             tbody.appendChild(tr);
         });
-    }
+    },
 };

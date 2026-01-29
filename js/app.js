@@ -152,10 +152,13 @@ const app = {
             if (!el) return;
             
             const currentValue = el.value; // Preserve selection if possible
-            el.innerHTML = '';
             
-            // Default "Select..." option if needed, but usually first item is default
-            // Let's add a placeholder if it's a new entry
+            // Clear but keep first option if it's a filter
+            if (id === 'product-type-filter') {
+                el.innerHTML = '<option value="">Todos os Tipos</option>';
+            } else {
+                el.innerHTML = '';
+            }
             
             set.forEach(val => {
                 const opt = document.createElement('option');
@@ -163,11 +166,14 @@ const app = {
                 opt.textContent = val;
                 el.appendChild(opt);
             });
-            // Add 'Outro' option
-            const other = document.createElement('option');
-            other.value = 'OTHER';
-            other.textContent = 'Outro (Adicionar Novo)...';
-            el.appendChild(other);
+
+            // Add 'Outro' option only for product form
+            if (id !== 'product-type-filter') {
+                const other = document.createElement('option');
+                other.value = 'OTHER';
+                other.textContent = 'Outro (Adicionar Novo)...';
+                el.appendChild(other);
+            }
             
             // Restore value if it exists in new set, otherwise select first
             if (currentValue && (set.has(currentValue) || currentValue === 'OTHER')) {
@@ -177,6 +183,7 @@ const app = {
 
         populate('prod-unit', units);
         populate('prod-type', types);
+        populate('product-type-filter', types);
     },
 
     toggleCustomInput: (id) => {
@@ -209,16 +216,8 @@ const app = {
         ];
         ui.renderTable('dashboard-table', app.state.balance, dashboardCols);
 
-        // Products
-        const prodCols = [
-            { field: 'CODIGO' },
-            { field: 'NOME' },
-            { field: 'UNIDADE' },
-            { field: 'TIPO' },
-            { field: 'ESTOQUE_MINIMO' },
-            { field: 'actions', render: (row) => `<button class="btn btn-sm btn-outline" style="color:blue; border-color:blue" onclick="app.editProduct('${row.ID}')">Editar</button>` }
-        ];
-        ui.renderTable('products-table', app.state.products, prodCols);
+        // Products - Filter Logic is now handled by filterProducts
+        app.filterProducts();
 
         // Selects
         const populateSelect = (id) => {
@@ -267,6 +266,39 @@ const app = {
         
         ui.renderTable('entries-table', sortedEntries, entryCols);
         ui.renderTable('exits-table', sortedExits, exitCols);
+    },
+
+    filterProducts: () => {
+        const searchText = document.getElementById('product-search').value.toLowerCase();
+        const typeFilter = document.getElementById('product-type-filter').value;
+        
+        let filtered = app.state.products;
+
+        if (searchText) {
+            filtered = filtered.filter(p => 
+                (p.NOME && p.NOME.toLowerCase().includes(searchText)) || 
+                (p.CODIGO && p.CODIGO.toLowerCase().includes(searchText))
+            );
+        }
+
+        if (typeFilter) {
+            filtered = filtered.filter(p => p.TIPO === typeFilter);
+        }
+
+        // Update count
+        document.getElementById('product-count').textContent = `${filtered.length} itens`;
+
+        // Render Table with Row Number
+        const prodCols = [
+            { field: 'rowNum', render: (row, index) => index + 1 }, // Dynamic Row Number
+            { field: 'CODIGO' },
+            { field: 'NOME' },
+            { field: 'UNIDADE' },
+            { field: 'TIPO' },
+            { field: 'ESTOQUE_MINIMO' },
+            { field: 'actions', render: (row) => `<button class="btn btn-sm btn-outline" style="color:blue; border-color:blue" onclick="app.editProduct('${row.ID}')">Editar</button>` }
+        ];
+        ui.renderTable('products-table', filtered, prodCols);
     },
 
     filterTable: (tableId, query) => {

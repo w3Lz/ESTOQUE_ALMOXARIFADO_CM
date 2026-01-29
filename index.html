@@ -116,10 +116,25 @@
                         <i class="fas fa-plus"></i> Novo Produto
                     </button>
                 </div>
+                
+                <!-- Search and Filter Bar -->
+                <div class="search-bar-container">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="product-search" placeholder="Buscar produto..." onkeyup="app.filterProducts()">
+                    </div>
+                    <select id="product-type-filter" class="form-control filter-select" onchange="app.filterProducts()">
+                        <option value="">Todos os Tipos</option>
+                        <!-- Populated by JS -->
+                    </select>
+                    <span class="item-count" id="product-count">0 itens</span>
+                </div>
+
                 <div class="table-container">
                     <table id="products-table">
                         <thead>
                             <tr>
+                                <th style="width: 50px;">#</th>
                                 <th>Cód.</th>
                                 <th>Nome</th>
                                 <th>Unid.</th>
