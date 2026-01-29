@@ -185,11 +185,11 @@ const app = {
         
         if (select.value === 'OTHER') {
             customInput.classList.remove('hidden');
-            customInput.required = true;
+            customInput.setAttribute('required', 'true'); // Add required dynamically
             customInput.focus();
         } else {
             customInput.classList.add('hidden');
-            customInput.required = false;
+            customInput.removeAttribute('required'); // Remove required
             customInput.value = '';
         }
     },
@@ -296,11 +296,19 @@ const app = {
         let unit = document.getElementById('prod-unit').value;
         if (unit === 'OTHER') {
             unit = document.getElementById('prod-unit-custom').value;
+            if (!unit) {
+                ui.showToast("Por favor, digite a nova unidade.", "warning");
+                return;
+            }
         }
 
         let type = document.getElementById('prod-type').value;
         if (type === 'OTHER') {
             type = document.getElementById('prod-type-custom').value;
+            if (!type) {
+                ui.showToast("Por favor, digite o novo tipo.", "warning");
+                return;
+            }
         }
 
         const min = document.getElementById('prod-min').value;
