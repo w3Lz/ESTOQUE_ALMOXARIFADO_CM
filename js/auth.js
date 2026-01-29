@@ -4,7 +4,25 @@ const auth = {
     gisInited: false,
     user: null,
 
-    init: () => {
+    // Helper to wait for libraries
+    waitForLibraries: () => {
+        return new Promise((resolve) => {
+            const check = () => {
+                if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
+                    resolve();
+                } else {
+                    setTimeout(check, 100); // Check every 100ms
+                }
+            };
+            check();
+        });
+    },
+
+    init: async () => {
+        console.log("Aguardando bibliotecas do Google...");
+        await auth.waitForLibraries();
+        console.log("Bibliotecas carregadas. Inicializando GAPI...");
+        
         gapi.load('client', auth.initializeGapiClient);
         auth.initializeGisClient();
     },
@@ -15,6 +33,12 @@ const auth = {
             discoveryDocs: Config.discoveryDocs,
         });
         auth.gapiInited = true;
+        
+        // After GAPI init (with API Key), we can try to read public data immediately
+        console.log("GAPI inicializado. Tentando ler dados...");
+        app.initData();
+        
+        // Check if we have a cached token (optional, simple check)
         auth.checkAuth();
     },
 
@@ -26,7 +50,7 @@ const auth = {
                 if (resp.error !== undefined) {
                     throw (resp);
                 }
-                auth.handleAuthSuccess();
+                auth.handleAuthSuccess(resp);
             },
         });
         auth.gisInited = true;
@@ -37,11 +61,8 @@ const auth = {
         
         // Request access token
         if (gapi.client.getToken() === null) {
-            // Prompt the user to select a Google Account and ask for consent to share their data
-            // when establishing a new session.
             auth.tokenClient.requestAccessToken({prompt: 'consent'});
         } else {
-            // Skip display of account chooser and consent dialog for an existing session.
             auth.tokenClient.requestAccessToken({prompt: ''});
         }
     },
@@ -56,23 +77,32 @@ const auth = {
         }
     },
 
-    handleAuthSuccess: () => {
-        // We don't get user profile directly from Token Client in implicit flow easily without another API call (People API)
-        // For simplicity, we just say "Logado" or try to get basic info if possible, 
-        // or just rely on the fact we have a token.
-        // Let's assume success and show a generic user or try to parse ID token if we used OIDC (but we used initTokenClient)
-        
-        auth.user = { name: "Usuário Google" }; // Placeholder
+    handleAuthSuccess: (resp) => {
+        // Token is auto-set by GIS client in newer versions? 
+        // No, initTokenClient doesn't auto-set gapi client token in all cases, 
+        // but often they work together if gapi is loaded.
+        // Explicitly setting it to be safe if response has it.
+        /* 
+           Note: With initTokenClient (Implicit Flow), the access_token is in resp.
+           We might need to manually set it for gapi.client if they are decoupled.
+        */
+        if (resp && resp.access_token) {
+            gapi.client.setToken(resp);
+        }
+
+        auth.user = { name: "Usuário Logado" }; 
         ui.updateAuthUI(auth.user);
         
-        // Trigger data load
+        // Reload data with full permissions
         app.initData();
     },
     
     checkAuth: () => {
-        // Check if we have a valid token stored? 
-        // GAPI client stores it in memory. If page reload, it's gone.
-        // Implicit flow usually requires re-auth or silent auth.
-        // For this MVP, user clicks login.
+        // Just a placeholder. Implicit flow state is managed by the browser session/token validity.
+    },
+    
+    // Helper to check if we can write
+    isAuthenticated: () => {
+        return gapi.client.getToken() !== null;
     }
 };

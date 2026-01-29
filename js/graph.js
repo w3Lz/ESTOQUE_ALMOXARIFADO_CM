@@ -38,6 +38,13 @@ const graph = {
     },
 
     addRow: async (sheetName, valuesArray) => {
+        // Verificar autenticação antes de escrever
+        if (!auth.isAuthenticated()) {
+            ui.showToast("Você precisa fazer Login para salvar dados!", "warning");
+            auth.signIn(); // Opcional: abrir popup de login automaticamente
+            throw new Error("Usuário não autenticado");
+        }
+
         // valuesArray é [[val1, val2...]]
         try {
             const range = `${sheetName}!A:A`; // Append no final da planilha

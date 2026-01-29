@@ -40,14 +40,14 @@ const app = {
     startPolling: () => {
         if (app.config.syncTimer) clearInterval(app.config.syncTimer);
         app.config.syncTimer = setInterval(() => {
-            if (auth.account) {
-                app.syncData(true);
-            }
+             // Sempre sincroniza, pois leitura é pública
+             app.syncData(true);
         }, app.config.pollingInterval);
     },
 
     syncData: async (silent = false) => {
-        if (!auth.account) return;
+        // Remover checagem de auth para permitir leitura pública
+        // if (!auth.account) return;
 
         if (!silent) ui.toggleLoading(true);
 
