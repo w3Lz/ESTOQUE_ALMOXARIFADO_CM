@@ -15,6 +15,15 @@
 
     <!-- SweetAlert2 (Modern Alerts) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Fix SweetAlert2 vs dark theme inputs if necessary, and ensure datalist/selects are clean */
+        select.form-control {
+            appearance: auto; /* Ensure arrow shows */
+            background-image: none; /* Remove any custom arrow that might conflict */
+        }
+        /* Fix hidden input spacing */
+        .mt-2 { margin-top: 10px; }
+    </style>
 
     <!-- Custom CSS -->
     <!-- Removed here to load at end with version -->
@@ -103,7 +112,7 @@
             <div id="view-products" class="view hidden">
                 <div class="view-header">
                     <h3>Cadastro de Produtos</h3>
-                    <button class="btn btn-primary" onclick="ui.showModal('modal-product')">
+                    <button class="btn btn-primary" onclick="app.updateDatalists(); ui.showModal('modal-product')">
                         <i class="fas fa-plus"></i> Novo Produto
                     </button>
                 </div>

@@ -63,6 +63,7 @@ const app = {
             app.state.exits = exits;
 
             app.calculateBalance();
+            app.updateDatalists(); // Ensure lists are populated
             app.updateUI();
             
             const now = new Date();
@@ -133,19 +134,29 @@ const app = {
     },
 
     updateDatalists: () => {
-        // Collect unique values
+        // Collect unique values - Start with defaults
         const units = new Set(['UN', 'KG', 'MT', 'CX', 'L', 'PCT']);
         const types = new Set(['Material', 'EPI', 'Ferramenta', 'Comida']);
         
-        app.state.products.forEach(p => {
-            if (p.UNIDADE) units.add(p.UNIDADE);
-            if (p.TIPO) types.add(p.TIPO);
-        });
+        // Add existing from products
+        if (app.state.products && app.state.products.length > 0) {
+            app.state.products.forEach(p => {
+                if (p.UNIDADE) units.add(p.UNIDADE);
+                if (p.TIPO) types.add(p.TIPO);
+            });
+        }
 
         // Populate Selects
         const populate = (id, set) => {
             const el = document.getElementById(id);
+            if (!el) return;
+            
+            const currentValue = el.value; // Preserve selection if possible
             el.innerHTML = '';
+            
+            // Default "Select..." option if needed, but usually first item is default
+            // Let's add a placeholder if it's a new entry
+            
             set.forEach(val => {
                 const opt = document.createElement('option');
                 opt.value = val;
@@ -157,6 +168,11 @@ const app = {
             other.value = 'OTHER';
             other.textContent = 'Outro (Adicionar Novo)...';
             el.appendChild(other);
+            
+            // Restore value if it exists in new set, otherwise select first
+            if (currentValue && (set.has(currentValue) || currentValue === 'OTHER')) {
+                el.value = currentValue;
+            }
         };
 
         populate('prod-unit', units);
