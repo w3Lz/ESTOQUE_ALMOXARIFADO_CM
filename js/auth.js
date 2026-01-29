@@ -1,80 +1,78 @@
 const auth = {
-    msalInstance: null,
-    account: null,
+    tokenClient: null,
+    gapiInited: false,
+    gisInited: false,
+    user: null,
 
-    init: async () => {
-        const msalConfig = {
-            auth: {
-                clientId: Config.clientId,
-                authority: Config.authority,
-                // Ajuste para GitHub Pages: Usa o caminho completo (ex: https://user.github.io/repo/)
-                // Remove 'index.html' se estiver presente para evitar duplicação no redirect
-                redirectUri: window.location.href.replace('index.html', '').split('?')[0].split('#')[0]
+    init: () => {
+        gapi.load('client', auth.initializeGapiClient);
+        auth.initializeGisClient();
+    },
+
+    initializeGapiClient: async () => {
+        await gapi.client.init({
+            apiKey: Config.apiKey,
+            discoveryDocs: Config.discoveryDocs,
+        });
+        auth.gapiInited = true;
+        auth.checkAuth();
+    },
+
+    initializeGisClient: () => {
+        auth.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: Config.clientId,
+            scope: Config.scopes,
+            callback: (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                auth.handleAuthSuccess();
             },
-            cache: {
-                cacheLocation: "sessionStorage",
-                storeAuthStateInCookie: false,
-            }
-        };
+        });
+        auth.gisInited = true;
+    },
 
-        auth.msalInstance = new msal.PublicClientApplication(msalConfig);
-        await auth.msalInstance.initialize();
-
-        // Check if user is already signed in
-        const accounts = auth.msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-            auth.handleResponse(accounts[0]);
+    signIn: () => {
+        if (!auth.tokenClient) return;
+        
+        // Request access token
+        if (gapi.client.getToken() === null) {
+            // Prompt the user to select a Google Account and ask for consent to share their data
+            // when establishing a new session.
+            auth.tokenClient.requestAccessToken({prompt: 'consent'});
+        } else {
+            // Skip display of account chooser and consent dialog for an existing session.
+            auth.tokenClient.requestAccessToken({prompt: ''});
         }
     },
 
-    signIn: async () => {
-        try {
-            const loginResponse = await auth.msalInstance.loginPopup({
-                scopes: Config.scopes
-            });
-            auth.handleResponse(loginResponse.account);
-        } catch (error) {
-            console.error(error);
-            ui.showToast("Erro ao fazer login: " + error.message, "error");
+    signOut: () => {
+        const token = gapi.client.getToken();
+        if (token !== null) {
+            google.accounts.oauth2.revoke(token.access_token);
+            gapi.client.setToken('');
+            auth.user = null;
+            ui.updateAuthUI(null);
         }
     },
 
-    signOut: async () => {
-        const logoutRequest = {
-            account: auth.msalInstance.getAccountByHomeId(auth.account.homeAccountId)
-        };
-        await auth.msalInstance.logoutPopup(logoutRequest);
-        auth.account = null;
-        ui.updateAuthUI(null);
-        window.location.reload();
-    },
-
-    handleResponse: (account) => {
-        auth.account = account;
-        ui.updateAuthUI(account);
-        console.log("Logado como:", account.username);
+    handleAuthSuccess: () => {
+        // We don't get user profile directly from Token Client in implicit flow easily without another API call (People API)
+        // For simplicity, we just say "Logado" or try to get basic info if possible, 
+        // or just rely on the fact we have a token.
+        // Let's assume success and show a generic user or try to parse ID token if we used OIDC (but we used initTokenClient)
+        
+        auth.user = { name: "Usuário Google" }; // Placeholder
+        ui.updateAuthUI(auth.user);
+        
         // Trigger data load
         app.initData();
     },
-
-    getToken: async () => {
-        if (!auth.account) throw new Error("Usuário não logado");
-
-        try {
-            const response = await auth.msalInstance.acquireTokenSilent({
-                account: auth.account,
-                scopes: Config.scopes
-            });
-            return response.accessToken;
-        } catch (error) {
-            console.warn("Silent token acquisition failed, trying popup", error);
-            if (error instanceof msal.InteractionRequiredAuthError) {
-                 const response = await auth.msalInstance.acquireTokenPopup({
-                    scopes: Config.scopes
-                });
-                return response.accessToken;
-            }
-            throw error;
-        }
+    
+    checkAuth: () => {
+        // Check if we have a valid token stored? 
+        // GAPI client stores it in memory. If page reload, it's gone.
+        // Implicit flow usually requires re-auth or silent auth.
+        // For this MVP, user clicks login.
     }
 };
