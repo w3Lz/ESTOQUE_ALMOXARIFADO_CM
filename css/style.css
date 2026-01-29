@@ -22,10 +22,10 @@ body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
-    height: 100vh;
-    width: 100vw;
+    min-height: 100vh;
+    width: 100%;
     display: flex;
-    overflow: hidden;
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* Sidebar */
@@ -78,7 +78,8 @@ body {
 .main-content {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    width: 100%; /* Ensure it takes available space */
+    max-width: 100%;
 }
 
 header {
