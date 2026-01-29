@@ -1,11 +1,6 @@
 const graph = {
-    // Mantive o nome do objeto 'graph' para não quebrar o app.js
-    // Mas agora ele usa a API do Google Sheets
-
     readTable: async (tableName) => {
         try {
-            // tableName no Sheets é o nome da aba (Ex: PRODUTOS)
-            // Vamos pegar todas as colunas (A:Z)
             const range = `${tableName}!A:Z`;
             
             const response = await gapi.client.sheets.spreadsheets.values.get({
@@ -17,14 +12,12 @@ const graph = {
             
             if (!rows || rows.length === 0) return [];
 
-            // Convert array of arrays to array of objects
             const headerRow = rows[0];
             const dataRows = rows.slice(1);
             
             return dataRows.map(row => {
                 let obj = {};
                 headerRow.forEach((head, index) => {
-                    // Mapeia valor ou vazio se não existir
                     obj[head] = row[index] || ""; 
                 });
                 return obj;
@@ -38,16 +31,14 @@ const graph = {
     },
 
     addRow: async (sheetName, valuesArray) => {
-        // Verificar autenticação antes de escrever
         if (!auth.isAuthenticated()) {
             ui.showToast("Você precisa fazer Login para salvar dados!", "warning");
-            auth.signIn(); // Opcional: abrir popup de login automaticamente
+            auth.signIn();
             throw new Error("Usuário não autenticado");
         }
 
-        // valuesArray é [[val1, val2...]]
         try {
-            const range = `${sheetName}!A:A`; // Append no final da planilha
+            const range = `${sheetName}!A:A`;
             
             const body = {
                 values: valuesArray
@@ -56,7 +47,7 @@ const graph = {
             const response = await gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: Config.spreadsheetId,
                 range: range,
-                valueInputOption: 'USER_ENTERED', // Interpreta datas e números
+                valueInputOption: 'USER_ENTERED',
                 resource: body,
             });
 
@@ -65,6 +56,36 @@ const graph = {
         } catch (error) {
             console.error("Sheets Write Error:", error);
             ui.showToast("Erro ao salvar: " + (error.result?.error?.message || error.message), 'error');
+            throw error;
+        }
+    },
+
+    updateRow: async (sheetName, rowNumber, valuesArray) => {
+        if (!auth.isAuthenticated()) {
+            ui.showToast("Você precisa fazer Login para salvar dados!", "warning");
+            auth.signIn();
+            throw new Error("Usuário não autenticado");
+        }
+
+        try {
+            const range = `${sheetName}!A${rowNumber}`;
+            
+            const body = {
+                values: [valuesArray]
+            };
+
+            const response = await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: Config.spreadsheetId,
+                range: range,
+                valueInputOption: 'USER_ENTERED',
+                resource: body,
+            });
+
+            return true;
+
+        } catch (error) {
+            console.error("Sheets Update Error:", error);
+            ui.showToast("Erro ao atualizar: " + (error.result?.error?.message || error.message), 'error');
             throw error;
         }
     }

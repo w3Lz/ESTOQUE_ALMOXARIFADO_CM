@@ -24,8 +24,16 @@ body {
     color: var(--text-color);
     min-height: 100vh;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex; /* Mantém flex para sidebar + content */
+    flex-direction: row;
+}
+
+#app {
     display: flex;
-    overflow-x: hidden; /* Prevent horizontal scroll */
+    width: 100%;
+    height: 100vh; /* Ocupa altura total */
 }
 
 /* Sidebar */
@@ -36,7 +44,9 @@ body {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    transition: width 0.3s;
+    flex-shrink: 0; /* Não deixa encolher */
+    height: 100%;
+    overflow-y: auto;
 }
 
 .logo {
@@ -76,10 +86,10 @@ body {
 
 /* Main Content */
 .main-content {
-    flex: 1;
+    flex-grow: 1; /* Cresce para ocupar o resto */
     padding: 20px;
-    width: 100%; /* Ensure it takes available space */
-    max-width: 100%;
+    overflow-y: auto;
+    width: calc(100% - 250px); /* Garante largura correta */
 }
 
 header {

@@ -154,7 +154,7 @@ const app = {
             { field: 'UNIDADE' },
             { field: 'TIPO' },
             { field: 'ESTOQUE_MINIMO' },
-            { field: 'actions', render: (row) => `<button class="btn btn-sm btn-outline" style="color:blue" disabled>Editar</button>` }
+            { field: 'actions', render: (row) => `<button class="btn btn-sm btn-outline" style="color:blue; border-color:blue" onclick="app.editProduct('${row.ID}')">Editar</button>` }
         ];
         ui.renderTable('products-table', app.state.products, prodCols);
 
@@ -224,30 +224,67 @@ const app = {
 
     saveProduct: async (e) => {
         e.preventDefault();
+        const id = document.getElementById('prod-id').value;
         const code = document.getElementById('prod-code').value;
         const name = document.getElementById('prod-name').value;
         const unit = document.getElementById('prod-unit').value;
         const type = document.getElementById('prod-type').value;
         const min = document.getElementById('prod-min').value;
         
-        const newId = app.getNextId(app.state.products);
-        const now = new Date().toISOString();
-        
-        // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM
-        const row = [newId, code, type, name, unit, min, "Sim", now];
-        
         ui.toggleLoading(true);
         try {
-            await graph.addRow('PRODUTOS', [row]);
+            if (id) {
+                // Edit existing
+                // Find row index (Assuming ID is in first column, but row index depends on array position + 2 for header)
+                // We need to find the actual row index in the sheet.
+                // Best way: find index in app.state.products and add 2 (1 for header, 1 for 0-based to 1-based)
+                const index = app.state.products.findIndex(p => String(p.ID) === String(id));
+                if (index === -1) throw new Error("Produto não encontrado");
+                
+                // Row number in Excel/Sheets (Header is row 1, Data starts row 2)
+                const rowNum = index + 2; 
+                
+                // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM
+                // We update everything except ID and CRIADO_EM
+                const original = app.state.products[index];
+                const rowData = [id, code, type, name, unit, min, original.ATIVO || "Sim", original.CRIADO_EM];
+                
+                await graph.updateRow('PRODUTOS', rowNum, rowData);
+                ui.showToast("Produto atualizado!", "success");
+            } else {
+                // New
+                const newId = app.getNextId(app.state.products);
+                const now = new Date().toISOString();
+                const row = [newId, code, type, name, unit, min, "Sim", now];
+                await graph.addRow('PRODUTOS', [row]);
+                ui.showToast("Produto cadastrado!", "success");
+            }
+            
             ui.closeModal('modal-product');
             document.getElementById('form-product').reset();
+            document.getElementById('prod-id').value = ""; // Clear ID
             await app.syncData();
-            ui.showToast("Produto cadastrado!", "success");
+            
         } catch (err) {
             console.error(err);
+            ui.showToast("Erro: " + err.message, "error");
         } finally {
             ui.toggleLoading(false);
         }
+    },
+
+    editProduct: (id) => {
+        const p = app.state.products.find(p => String(p.ID) === String(id));
+        if (!p) return;
+        
+        document.getElementById('prod-id').value = p.ID;
+        document.getElementById('prod-code').value = p.CODIGO || "";
+        document.getElementById('prod-name').value = p.NOME || "";
+        document.getElementById('prod-unit').value = p.UNIDADE || "UN";
+        document.getElementById('prod-type').value = p.TIPO || "Material";
+        document.getElementById('prod-min').value = p.ESTOQUE_MINIMO || 0;
+        
+        ui.showModal('modal-product');
     },
 
     handleEntry: async (e) => {
