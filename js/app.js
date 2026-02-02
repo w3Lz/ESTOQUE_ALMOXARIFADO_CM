@@ -545,7 +545,8 @@ const app = {
         filtered.forEach(p => {
             // Find current balance for context
             const balanceItem = app.state.balance.find(b => String(b.id) === String(p.ID));
-            const currentQty = balanceItem ? balanceItem.qty.toFixed(2) : '0.00';
+            // Show balance as integer (floor)
+            const currentQty = balanceItem ? Math.floor(balanceItem.qty) : '0';
 
             const tr = document.createElement('tr');
             tr.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors";
