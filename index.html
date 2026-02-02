@@ -186,12 +186,42 @@
                                     <table id="dashboard-table" class="w-full text-left text-sm text-[#101418] dark:text-gray-200">
                                         <thead class="bg-[#f8f9fa] dark:bg-gray-800 border-b border-[#dadfe7] dark:border-gray-700">
                                             <tr>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Código</th>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Produto</th>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Unid.</th>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Tipo</th>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 text-right">Saldo</th>
-                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Status</th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('code', 'balance')">
+                                                    <div class="flex items-center gap-1">
+                                                        Código
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="code">unfold_more</span>
+                                                    </div>
+                                                </th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('name', 'balance')">
+                                                    <div class="flex items-center gap-1">
+                                                        Produto
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="name">unfold_more</span>
+                                                    </div>
+                                                </th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('unit', 'balance')">
+                                                    <div class="flex items-center gap-1">
+                                                        Unid.
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="unit">unfold_more</span>
+                                                    </div>
+                                                </th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('type', 'balance')">
+                                                    <div class="flex items-center gap-1">
+                                                        Tipo
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="type">unfold_more</span>
+                                                    </div>
+                                                </th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 text-right cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('qty', 'balance')">
+                                                    <div class="flex items-center justify-end gap-1">
+                                                        Saldo
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="qty">unfold_more</span>
+                                                    </div>
+                                                </th>
+                                                <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('status', 'balance')">
+                                                    <div class="flex items-center gap-1">
+                                                        Status
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="status">unfold_more</span>
+                                                    </div>
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-[#dadfe7] dark:divide-gray-700">
@@ -234,11 +264,36 @@
                                     <thead class="bg-[#f8f9fa] dark:bg-gray-800 border-b border-[#dadfe7] dark:border-gray-700">
                                         <tr>
                                             <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">#</th>
-                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Código</th>
-                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Nome</th>
-                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Unidade</th>
-                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Tipo</th>
-                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Min</th>
+                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('CODIGO', 'products')">
+                                                <div class="flex items-center gap-1">
+                                                    Código
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="CODIGO">unfold_more</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('NOME', 'products')">
+                                                <div class="flex items-center gap-1">
+                                                    Nome
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="NOME">unfold_more</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('UNIDADE', 'products')">
+                                                <div class="flex items-center gap-1">
+                                                    Unidade
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="UNIDADE">unfold_more</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('TIPO', 'products')">
+                                                <div class="flex items-center gap-1">
+                                                    Tipo
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="TIPO">unfold_more</span>
+                                                </div>
+                                            </th>
+                                            <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onclick="app.sortData('ESTOQUE_MINIMO', 'products')">
+                                                <div class="flex items-center gap-1">
+                                                    Min
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 sort-icon" data-col="ESTOQUE_MINIMO">unfold_more</span>
+                                                </div>
+                                            </th>
                                             <th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 text-center">Ações</th>
                                         </tr>
                                     </thead>

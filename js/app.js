@@ -3,7 +3,11 @@ const app = {
         products: [],
         entries: [],
         exits: [],
-        balance: []
+        balance: [],
+        sort: {
+            column: null,
+            direction: 'asc' // or 'desc'
+        }
     },
     
     config: {
@@ -295,6 +299,72 @@ const app = {
         
         ui.renderTable('entries-table', sortedEntries, entryCols);
         ui.renderTable('exits-table', sortedExits, exitCols);
+    },
+
+    sortData: (column, datasetName = 'balance') => {
+        const currentSort = app.state.sort;
+        
+        // Toggle direction if clicking same column
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+        }
+
+        // Helper for value comparison
+        const getValue = (item, col) => {
+            let val = item[col];
+            // Handle nested or special cases if any
+            if (col === 'qty' || col === 'min' || col === 'ESTOQUE_MINIMO' || col === 'QUANTIDADE') {
+                return parseFloat(val) || 0;
+            }
+            if (col === 'code' || col === 'CODIGO') {
+                // Try to sort numbers numerically even if string
+                const num = parseFloat(val);
+                return isNaN(num) ? (val || '').toString().toLowerCase() : num;
+            }
+            return (val || '').toString().toLowerCase();
+        };
+
+        const direction = currentSort.direction === 'asc' ? 1 : -1;
+
+        // Sort the data in place
+        app.state[datasetName].sort((a, b) => {
+            const valA = getValue(a, column);
+            const valB = getValue(b, column);
+
+            if (valA < valB) return -1 * direction;
+            if (valA > valB) return 1 * direction;
+            return 0;
+        });
+
+        // Update UI
+        if (datasetName === 'balance') {
+            app.filterDashboard();
+        } else if (datasetName === 'products') {
+            app.filterProducts();
+        }
+        
+        // Update Sort Icons (Generic helper)
+        app.updateSortIcons(column, currentSort.direction);
+    },
+
+    updateSortIcons: (activeColumn, direction) => {
+        // Reset all icons
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.textContent = 'unfold_more'; // default
+            icon.classList.remove('text-primary', 'dark:text-blue-300');
+            icon.classList.add('text-gray-300');
+        });
+
+        // Set active icon
+        const activeIcon = document.querySelector(`.sort-icon[data-col="${activeColumn}"]`);
+        if (activeIcon) {
+            activeIcon.textContent = direction === 'asc' ? 'expand_less' : 'expand_more';
+            activeIcon.classList.remove('text-gray-300');
+            activeIcon.classList.add('text-primary', 'dark:text-blue-300');
+        }
     },
 
     filterProducts: () => {
