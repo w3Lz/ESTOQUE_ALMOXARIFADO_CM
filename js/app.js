@@ -4,6 +4,7 @@ const app = {
         entries: [],
         exits: [],
         balance: [],
+        logs: [],
         charts: {}, // Store Chart.js instances
         sort: {
             column: null,
@@ -53,6 +54,7 @@ const app = {
         if (viewId === 'entries') activeItem = navItems[2];
         if (viewId === 'exits') activeItem = navItems[3];
         if (viewId === 'reports') activeItem = navItems[4];
+        if (viewId === 'audit') activeItem = navItems[5];
 
         if (activeItem) {
             activeItem.classList.add('active');
@@ -72,13 +74,19 @@ const app = {
             'products': 'Produtos',
             'entries': 'Entradas',
             'exits': 'Saídas',
-            'reports': 'Indicadores e Gráficos'
+            'reports': 'Indicadores e Gráficos',
+            'audit': 'Auditoria e Logs'
         };
         document.getElementById('page-title').textContent = titles[viewId];
         
         // Render charts if opening reports view
         if (viewId === 'reports') {
             app.renderCharts();
+        }
+
+        // Render logs if opening audit view
+        if (viewId === 'audit') {
+            app.renderAuditLogs();
         }
     },
 
@@ -102,6 +110,15 @@ const app = {
                 graph.readTable('ENTRADAS'),
                 graph.readTable('SAIDAS')
             ]);
+            
+            // Try to read logs separately
+            try {
+                const logs = await graph.readTable('LOGS');
+                app.state.logs = logs || [];
+            } catch(e) {
+                console.warn("Aba LOGS não encontrada, será criada na próxima ação.");
+                app.state.logs = [];
+            }
 
             app.state.products = products;
             app.state.entries = entries;
@@ -247,9 +264,14 @@ const app = {
         const reportSel = document.getElementById('report-product-select');
         if (reportSel) {
             const currentVal = reportSel.value;
+            const showInactive = document.getElementById('report-show-inactive') ? document.getElementById('report-show-inactive').checked : false;
+            
             reportSel.innerHTML = '<option value="">Selecione um produto...</option>';
             app.state.products.forEach(p => {
-                if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return;
+                // If filter is active (default), hide inactive products
+                // BUT if a product is already selected, keep it in the list even if inactive so chart doesn't break
+                if (!showInactive && p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO' && String(p.ID) !== String(currentVal)) return;
+                
                 const opt = document.createElement('option');
                 opt.value = p.ID;
                 opt.textContent = `${p.CODIGO || p.ID} - ${p.NOME}`;
@@ -504,15 +526,162 @@ const app = {
             { field: 'UNIDADE' },
             { field: 'TIPO' },
             { field: 'ESTOQUE_MINIMO' },
-            { field: 'actions', render: (row) => `
-                <div class="flex items-center justify-center">
-                    <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-primary dark:text-blue-300 transition-colors" onclick="app.editProduct('${row.ID}')">
+            { field: 'actions', render: (row) => {
+                const isActive = !row.ATIVO || String(row.ATIVO).toUpperCase() === 'SIM';
+                const icon = isActive ? 'block' : 'check_circle';
+                const colorClass = isActive ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20';
+                const title = isActive ? 'Inativar Produto' : 'Ativar Produto';
+                
+                return `
+                <div class="flex items-center justify-center gap-2">
+                    <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-primary dark:text-blue-300 transition-colors" onclick="app.editProduct('${row.ID}')" title="Editar">
                         <span class="material-symbols-outlined text-[18px]">edit</span>
                     </button>
+                    <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 dark:bg-gray-700 transition-colors ${colorClass}" onclick="app.toggleProductStatus('${row.ID}')" title="${title}">
+                        <span class="material-symbols-outlined text-[18px]">${icon}</span>
+                    </button>
                 </div>
-            ` }
+            `; }}
         ];
         ui.renderTable('products-table', filtered, prodCols);
+    },
+
+    // --- EXPORT FUNCTIONS ---
+    exportToExcel: (tableId, filename) => {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        // Use SheetJS
+        const wb = XLSX.utils.table_to_book(table, {sheet: "Sheet1"});
+        XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    },
+
+    exportToPDF: (tableId, title) => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.text(title, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22);
+
+        doc.autoTable({ 
+            html: `#${tableId}`,
+            startY: 30,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185] },
+            styles: { fontSize: 8 }
+        });
+
+        doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+    },
+
+    toggleProductStatus: async (id) => {
+        const p = app.state.products.find(p => String(p.ID) === String(id));
+        if (!p) return;
+
+        const currentStatus = p.ATIVO || "Sim";
+        const newStatus = String(currentStatus).toUpperCase() === "SIM" ? "Não" : "Sim";
+        const confirmMsg = newStatus === "Não" ? "Deseja realmente inativar este produto?" : "Deseja ativar este produto?";
+
+        const result = await Swal.fire({
+            title: 'Confirmação',
+            text: confirmMsg,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            ui.toggleLoading(true);
+            try {
+                const index = app.state.products.findIndex(prod => String(prod.ID) === String(id));
+                const rowNum = index + 2;
+                
+                // Update row. Need all fields.
+                // ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM
+                const rowData = [
+                    p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, newStatus, p.CRIADO_EM
+                ];
+
+                await graph.updateRow('PRODUTOS', rowNum, rowData);
+                await app.syncData();
+                ui.showToast(`Produto ${newStatus === "Sim" ? "ativado" : "inativado"} com sucesso!`, "success");
+                
+                // Log action
+                app.logAction(newStatus === "Sim" ? "ATIVAR_PRODUTO" : "INATIVAR_PRODUTO", `Produto: ${p.NOME} (${p.CODIGO})`);
+
+            } catch (err) {
+                console.error(err);
+                ui.showToast("Erro ao alterar status: " + err.message, "error");
+            } finally {
+                ui.toggleLoading(false);
+            }
+        }
+    },
+
+    // --- AUDIT LOGS ---
+    logAction: async (action, details) => {
+        const user = (auth.user && auth.user.name) || 'Desconhecido';
+        const now = new Date().toISOString(); // ISO for storage
+        // Format for display can be handled in render
+        
+        // ID generation for Logs (simple timestamp based or count)
+        const newId = app.getNextId(app.state.logs);
+        
+        // Columns: ID, DATA_HORA, USUARIO, ACAO, DETALHES
+        const row = [newId, now, user, action, details];
+        
+        try {
+            await graph.addRow('LOGS', [row]);
+            // Update local state immediately for UI
+            app.state.logs.push({
+                ID: newId,
+                DATA_HORA: now,
+                USUARIO: user,
+                ACAO: action,
+                DETALHES: details
+            });
+        } catch (e) {
+            console.error("Erro ao gravar log:", e);
+            // Non-blocking error for user actions, but log to console
+        }
+    },
+
+    renderAuditLogs: () => {
+        const tbody = document.querySelector('#audit-table tbody');
+        if (!tbody) return;
+        
+        // Sort by Date Descending
+        const sortedLogs = [...app.state.logs].sort((a,b) => new Date(b.DATA_HORA) - new Date(a.DATA_HORA));
+        
+        // Limit to last 100 for performance?
+        const displayLogs = sortedLogs.slice(0, 100);
+        
+        if (displayLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum registro encontrado.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = displayLogs.map(log => {
+            const date = new Date(log.DATA_HORA).toLocaleString('pt-BR');
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${log.USUARIO}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                            ${log.ACAO}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title="${log.DETALHES}">
+                        ${log.DETALHES}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     },
 
     // --- PRODUCT SEARCH MODAL LOGIC ---
@@ -717,6 +886,7 @@ const app = {
                 
                 await graph.updateRow('PRODUTOS', rowNum, rowData);
                 ui.showToast("Produto atualizado!", "success");
+                app.logAction('EDITAR_PRODUTO', `Editou: ${name} (${code})`);
             } else {
                 // New
                 const newId = app.getNextId(app.state.products);
@@ -724,6 +894,7 @@ const app = {
                 const row = [newId, code, type, name, unit, min, "Sim", now];
                 await graph.addRow('PRODUTOS', [row]);
                 ui.showToast("Produto cadastrado!", "success");
+                app.logAction('CRIAR_PRODUTO', `Criou: ${name} (${code})`);
             }
             
             ui.closeModal('modal-product');
@@ -811,9 +982,10 @@ const app = {
         };
 
         // --- 1. Products by Type (Pie) ---
+        const showInactive = document.getElementById('report-show-inactive').checked;
         const typeCounts = {};
         app.state.products.forEach(p => {
-            if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return;
+            if (!showInactive && p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return;
             const type = p.TIPO || 'Outros';
             typeCounts[type] = (typeCounts[type] || 0) + 1;
         });
@@ -1326,6 +1498,9 @@ const app = {
             document.getElementById('form-entry').reset();
             await app.syncData();
             ui.showToast("Entrada registrada!", "success");
+            
+            const p = app.state.products.find(p => String(p.ID) === String(pid));
+            app.logAction('NOVA_ENTRADA', `Produto: ${p ? p.NOME : pid}, Qtd: ${qty}`);
         } catch (err) {
             console.error(err);
         } finally {
@@ -1370,6 +1545,9 @@ const app = {
             document.getElementById('form-exit').reset();
             await app.syncData();
             ui.showToast("Saída registrada!", "success");
+
+            const p = app.state.products.find(p => String(p.ID) === String(pid));
+            app.logAction('NOVA_SAIDA', `Produto: ${p ? p.NOME : pid}, Qtd: ${qty}`);
         } catch (err) {
             console.error(err);
         } finally {
@@ -1428,6 +1606,9 @@ const app = {
             ui.showToast("Entrada atualizada!", "success");
             ui.closeModal('modal-edit-entry');
             await app.syncData();
+            
+            const p = app.state.products.find(p => String(p.ID) === String(pid));
+            app.logAction('EDITAR_ENTRADA', `ID: ${id}, Produto: ${p ? p.NOME : pid}, Nova Qtd: ${qty}`);
         } catch (err) {
             console.error(err);
             ui.showToast("Erro: " + err.message, "error");
@@ -1487,6 +1668,9 @@ const app = {
             ui.showToast("Saída atualizada!", "success");
             ui.closeModal('modal-edit-exit');
             await app.syncData();
+
+            const p = app.state.products.find(p => String(p.ID) === String(pid));
+            app.logAction('EDITAR_SAIDA', `ID: ${id}, Produto: ${p ? p.NOME : pid}, Nova Qtd: ${qty}`);
         } catch (err) {
             console.error(err);
             ui.showToast("Erro: " + err.message, "error");
