@@ -179,7 +179,7 @@ const app = {
             const currentValue = el.value; // Preserve selection if possible
             
             // Clear but keep first option if it's a filter
-            if (id === 'product-type-filter') {
+            if (id === 'product-type-filter' || id === 'dashboard-type-filter') {
                 el.innerHTML = '<option value="">Todos os Tipos</option>';
             } else {
                 el.innerHTML = '';
@@ -193,7 +193,7 @@ const app = {
             });
 
             // Add 'Outro' option only for product form
-            if (id !== 'product-type-filter') {
+            if (id !== 'product-type-filter' && id !== 'dashboard-type-filter') {
                 const other = document.createElement('option');
                 other.value = 'OTHER';
                 other.textContent = 'Outro (Adicionar Novo)...';
@@ -209,6 +209,7 @@ const app = {
         populate('prod-unit', units);
         populate('prod-type', types);
         populate('product-type-filter', types);
+        populate('dashboard-type-filter', types);
     },
 
     toggleCustomInput: (id) => {
@@ -242,7 +243,8 @@ const app = {
                 }
             }}
         ];
-        ui.renderTable('dashboard-table', app.state.balance, dashboardCols);
+        // Now using filterDashboard instead of direct render
+        app.filterDashboard();
 
         // Products - Filter Logic is now handled by filterProducts
         app.filterProducts();
@@ -332,6 +334,41 @@ const app = {
             ` }
         ];
         ui.renderTable('products-table', filtered, prodCols);
+    },
+
+    filterDashboard: () => {
+        const searchText = document.getElementById('dashboard-search').value.toLowerCase();
+        const typeFilter = document.getElementById('dashboard-type-filter').value;
+        
+        let filtered = app.state.balance;
+
+        if (searchText) {
+            filtered = filtered.filter(item => 
+                (item.name && item.name.toLowerCase().includes(searchText)) || 
+                (item.code && item.code.toLowerCase().includes(searchText))
+            );
+        }
+
+        if (typeFilter) {
+            filtered = filtered.filter(item => item.type === typeFilter);
+        }
+
+        const dashboardCols = [
+            { field: 'code' },
+            { field: 'name' },
+            { field: 'unit' },
+            { field: 'type' },
+            { field: 'qty', render: r => r.qty.toFixed(2) },
+            { field: 'status', render: (row) => {
+                if (row.status === 'OK') {
+                    return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
+                } else {
+                    return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
+                }
+            }}
+        ];
+
+        ui.renderTable('dashboard-table', filtered, dashboardCols);
     },
 
     filterTable: (tableId, query) => {

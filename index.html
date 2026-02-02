@@ -164,7 +164,20 @@
 
                         <!-- Balance Table -->
                         <div class="flex flex-col gap-4 w-full">
-                            <h3 class="text-[#101418] dark:text-white text-xl font-bold leading-tight">Saldo Atual</h3>
+                            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                                <h3 class="text-[#101418] dark:text-white text-xl font-bold leading-tight">Saldo Atual</h3>
+                                <div class="flex flex-1 gap-4 w-full md:w-auto justify-end">
+                                    <div class="relative flex-1 md:max-w-xs">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </div>
+                                        <input type="text" id="dashboard-search" placeholder="Buscar no saldo..." class="pl-10 w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white" onkeyup="app.filterDashboard()">
+                                    </div>
+                                    <select id="dashboard-type-filter" class="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white" onchange="app.filterDashboard()">
+                                        <option value="">Todos os Tipos</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="overflow-hidden rounded-xl border border-[#dadfe7] dark:border-gray-700 bg-white dark:bg-surface-dark shadow-sm w-full">
                                 <div class="overflow-x-auto w-full">
                                     <table id="dashboard-table" class="w-full text-left text-sm text-[#101418] dark:text-gray-200">
