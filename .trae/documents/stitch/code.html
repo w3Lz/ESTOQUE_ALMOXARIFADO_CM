@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Goodyear Inventory Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00398f", // Goodyear Deep Blue
+                        "accent": "#FFD100",  // Goodyear Yellow
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#0f1723",
+                        "surface-dark": "#1e293b",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155; 
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-[#101418] dark:text-white overflow-hidden antialiased">
+<div class="flex h-screen w-full">
+<!-- Side Navigation (Deep Blue Theme) -->
+<aside class="flex w-64 flex-col bg-primary dark:bg-primary/50 border-r border-primary/10 dark:border-white/10 transition-all duration-300">
+<div class="flex h-full flex-col justify-between p-4">
+<div class="flex flex-col gap-8">
+<!-- Logo Area -->
+<div class="flex gap-3 items-center px-2 pt-2">
+<div class="bg-center bg-no-repeat bg-contain size-10 rounded-lg bg-white p-1" data-alt="Goodyear Wingfoot Logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBqJw95-EFyOpYfw2OOCSXm3n5u9f1A_Gi-5uDbNjXWxv2_XH9u_GpJ9E3geie4SYcAPq_QexaXulz26s0KGpIqq8lhAHZBisJKM3Wq8eGq73SNyzZ3iSTsrH693f_KndwCxuWcLY-0Lpp7_ZlrWPYTh8zRN4QYbZiGbR1gQ9yO2SR9J-aqqyDAx-MPR4OYhyXtSQ7_kOsLewRyaGEO1KyMKERRMy6BYrnpwxYXAT4fKx5j_2090eToR9Imu2t0ZFz9fY75vV6TNFM");'></div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-tight">Goodyear Admin</h1>
+<p class="text-white/60 text-xs font-normal leading-normal">Inventory System</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg bg-[#FFD100] text-primary shadow-sm group" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<p class="text-sm font-bold leading-normal">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">package_2</span>
+<p class="text-sm font-medium leading-normal">Products</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">call_received</span>
+<p class="text-sm font-medium leading-normal">Entradas</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">call_made</span>
+<p class="text-sm font-medium leading-normal">Saídas</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">account_balance</span>
+<p class="text-sm font-medium leading-normal">Saldo</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">group</span>
+<p class="text-sm font-medium leading-normal">Usuário</p>
+</a>
+</nav>
+</div>
+<!-- Bottom User Profile -->
+<div class="flex flex-col gap-2 pt-4 border-t border-white/10">
+<div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-accent" data-alt="User profile picture placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBpxnORexiXhbLlzldmiUK6oLbzkpF0mrNNNkrR_hTzgSPOWHRoo9hnCHlSp2tmVOnP69EVeIJiGeIGxgjMMyMISBAi5SFEX9HkCPqmg0seMkprnNG8Oyqe33mLD0EmE5s560egFjQKE06fS9CO1Y1b6KF5gXMogefBiKDdq8VfycSo019MX9jLB7rBm5c4v4LuC0qenQ6GtBiciYL4mP9OPxVCZ2OY9euZaMrdlEmbeI_yeCBtgNWLXGiTCITh0nVnk4D9-IpF6T8");'></div>
+<div class="flex flex-col">
+<p class="text-white text-sm font-medium leading-normal">Admin User</p>
+<p class="text-white/60 text-xs font-normal">admin@goodyear.com</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-surface-dark px-8 py-4 z-10">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 text-primary dark:text-white">
+<span class="material-symbols-outlined text-3xl">inventory_2</span>
+<h2 class="text-lg font-bold leading-tight tracking-tight text-[#101418] dark:text-white">Sistema de Controle de Estoque</h2>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<!-- Search Bar -->
+<label class="hidden md:flex flex-col min-w-64 h-10">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-[#f0f2f5] dark:bg-gray-700/50 focus-within:ring-2 ring-primary/20 transition-all">
+<div class="text-[#5e718d] dark:text-gray-400 flex items-center justify-center pl-4 pr-2">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="flex w-full min-w-0 flex-1 bg-transparent text-[#101418] dark:text-white focus:outline-0 placeholder:text-[#5e718d] dark:placeholder:text-gray-400 text-sm font-normal leading-normal" placeholder="Buscar produto, SKU ou ID..."/>
+</div>
+</label>
+<!-- Action Buttons -->
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg size-10 bg-[#f0f2f5] dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#101418] dark:text-white transition-colors" onclick="document.documentElement.classList.toggle('dark')">
+<span class="material-symbols-outlined text-[20px]">dark_mode</span>
+</button>
+<button class="relative flex items-center justify-center rounded-lg size-10 bg-[#f0f2f5] dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#101418] dark:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+</button>
+<button class="flex items-center justify-center rounded-lg size-10 bg-[#f0f2f5] dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#101418] dark:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">help</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Scrollable Dashboard Content -->
+<div class="flex-1 overflow-y-auto p-8 scroll-smooth">
+<div class="max-w-[1400px] mx-auto flex flex-col gap-8">
+<!-- Page Heading & Controls -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div class="flex flex-col gap-1">
+<h1 class="text-[#101418] dark:text-white text-3xl font-extrabold leading-tight tracking-tight">Bem-vindo, Admin</h1>
+<p class="text-[#5e718d] dark:text-gray-400 text-sm font-normal">Visão geral do inventário e movimentações recentes de hoje.</p>
+</div>
+<!-- Mode Toggle -->
+<div class="flex h-10 items-center rounded-lg bg-[#e2e8f0] dark:bg-gray-700 p-1">
+<label class="cursor-pointer h-full flex items-center px-4 rounded-md bg-white dark:bg-surface-dark shadow-sm text-primary dark:text-accent text-sm font-bold transition-all">
+<span>Admin Mode</span>
+<input checked="" class="hidden" name="mode" type="radio"/>
+</label>
+<label class="cursor-pointer h-full flex items-center px-4 rounded-md text-[#5e718d] dark:text-gray-400 hover:text-primary dark:hover:text-white text-sm font-medium transition-all">
+<span>User Mode</span>
+<input class="hidden" name="mode" type="radio"/>
+</label>
+</div>
+</div>
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-lg transition-shadow">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-blue-50 dark:bg-primary/20 rounded-lg text-primary dark:text-blue-300">
+<span class="material-symbols-outlined text-[28px]">inventory</span>
+</div>
+<span class="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded">+2.4%</span>
+</div>
+<div>
+<p class="text-[#5e718d] dark:text-gray-400 text-sm font-medium mb-1">Total Produtos</p>
+<p class="text-[#101418] dark:text-white text-3xl font-bold leading-tight">1,240</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-lg transition-shadow">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-blue-50 dark:bg-primary/20 rounded-lg text-primary dark:text-blue-300">
+<span class="material-symbols-outlined text-[28px]">layers</span>
+</div>
+<span class="text-xs font-bold text-gray-500 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">Estável</span>
+</div>
+<div>
+<p class="text-[#5e718d] dark:text-gray-400 text-sm font-medium mb-1">Em Estoque</p>
+<p class="text-[#101418] dark:text-white text-3xl font-bold leading-tight">45,300 <span class="text-base font-normal text-gray-500">Unidades</span></p>
+</div>
+</div>
+<!-- Card 3 (Alert) -->
+<div class="group flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-6 border-l-4 border-l-[#FFD100] border-y border-r border-y-gray-100 dark:border-y-gray-700 border-r-gray-100 dark:border-r-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-lg transition-shadow relative overflow-hidden">
+<!-- Subtle yellow glow for alert -->
+<div class="absolute top-0 right-0 p-16 bg-[#FFD100] opacity-5 rounded-bl-full group-hover:opacity-10 transition-opacity"></div>
+<div class="flex justify-between items-start z-10">
+<div class="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-[#b89500] dark:text-[#FFD100]">
+<span class="material-symbols-outlined text-[28px]">warning</span>
+</div>
+<span class="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded">Ação Necessária</span>
+</div>
+<div class="z-10">
+<p class="text-[#5e718d] dark:text-gray-400 text-sm font-medium mb-1">Alerta de Estoque Baixo</p>
+<p class="text-[#101418] dark:text-white text-3xl font-bold leading-tight">12 <span class="text-base font-normal text-gray-500">Itens</span></p>
+</div>
+</div>
+</div>
+<!-- Recent Transactions Section -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-[#101418] dark:text-white text-xl font-bold leading-tight">Transações Recentes</h3>
+<button class="text-primary dark:text-blue-300 text-sm font-bold hover:underline flex items-center gap-1">
+                                Ver tudo <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="overflow-hidden rounded-xl border border-[#dadfe7] dark:border-gray-700 bg-white dark:bg-surface-dark shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm text-[#101418] dark:text-gray-200">
+<thead class="bg-[#f8f9fa] dark:bg-gray-800 border-b border-[#dadfe7] dark:border-gray-700">
+<tr>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">ID</th>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Produto</th>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Tipo</th>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400 text-right">Quantidade</th>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Data</th>
+<th class="px-6 py-4 font-bold text-[#5e718d] dark:text-gray-400">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#dadfe7] dark:divide-gray-700">
+<!-- Row 1 -->
+<tr class="hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-medium">#TR-8001</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="bg-gray-100 dark:bg-gray-700 rounded-md p-1 size-8 flex items-center justify-center text-gray-500" data-alt="Tire icon">
+<span class="material-symbols-outlined text-lg">radio_button_checked</span>
+</div>
+<span class="font-semibold text-primary dark:text-blue-300">Eagle F1 Asymmetric</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined text-[18px]">arrow_downward</span>
+<span class="font-medium">Entrada</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right font-bold text-[#101418] dark:text-white">120</td>
+<td class="px-6 py-4 text-[#5e718d] dark:text-gray-400">Out 24, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">Concluído</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-medium">#TR-8002</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="bg-gray-100 dark:bg-gray-700 rounded-md p-1 size-8 flex items-center justify-center text-gray-500" data-alt="Tire icon">
+<span class="material-symbols-outlined text-lg">radio_button_checked</span>
+</div>
+<span class="font-semibold text-primary dark:text-blue-300">Wrangler Duratrac</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+<span class="font-medium">Saída</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right font-bold text-[#101418] dark:text-white">45</td>
+<td class="px-6 py-4 text-[#5e718d] dark:text-gray-400">Out 24, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">Concluído</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-medium">#TR-8003</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="bg-gray-100 dark:bg-gray-700 rounded-md p-1 size-8 flex items-center justify-center text-gray-500" data-alt="Tire icon">
+<span class="material-symbols-outlined text-lg">radio_button_checked</span>
+</div>
+<span class="font-semibold text-primary dark:text-blue-300">EfficientGrip Perf.</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+<span class="font-medium">Saída</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right font-bold text-[#101418] dark:text-white">200</td>
+<td class="px-6 py-4 text-[#5e718d] dark:text-gray-400">Out 23, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-xs font-bold text-yellow-800 dark:text-yellow-500">Pendente</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-medium">#TR-8004</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="bg-gray-100 dark:bg-gray-700 rounded-md p-1 size-8 flex items-center justify-center text-gray-500" data-alt="Tire icon">
+<span class="material-symbols-outlined text-lg">radio_button_checked</span>
+</div>
+<span class="font-semibold text-primary dark:text-blue-300">Assurance MaxLife</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined text-[18px]">arrow_downward</span>
+<span class="font-medium">Entrada</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right font-bold text-[#101418] dark:text-white">500</td>
+<td class="px-6 py-4 text-[#5e718d] dark:text-gray-400">Out 22, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">Concluído</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
