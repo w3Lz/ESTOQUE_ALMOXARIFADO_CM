@@ -7,7 +7,8 @@ const app = {
         sort: {
             column: null,
             direction: 'asc' // or 'desc'
-        }
+        },
+        activeSearchForm: null // 'entry' or 'exit'
     },
     
     config: {
@@ -18,6 +19,13 @@ const app = {
     init: () => {
         auth.init();
         app.startPolling();
+
+        // Set Default Dates
+        const today = new Date().toISOString().split('T')[0];
+        const entryDate = document.getElementById('entry-date');
+        const exitDate = document.getElementById('exit-date');
+        if (entryDate) entryDate.value = today;
+        if (exitDate) exitDate.value = today;
     },
 
     navigate: (viewId) => {
@@ -166,6 +174,7 @@ const app = {
         // Collect unique values - Start with defaults
         const units = new Set(['UN', 'KG', 'MT', 'CX', 'L', 'PCT']);
         const types = new Set(['Material', 'EPI', 'Ferramenta', 'Comida']);
+        const users = new Set(['ADMIN']);
         
         // Add existing from products
         if (app.state.products && app.state.products.length > 0) {
@@ -174,6 +183,10 @@ const app = {
                 if (p.TIPO) types.add(p.TIPO);
             });
         }
+
+        // Add existing from entries and exits
+        if (app.state.entries) app.state.entries.forEach(e => { if(e.USUARIO) users.add(e.USUARIO); });
+        if (app.state.exits) app.state.exits.forEach(e => { if(e.USUARIO) users.add(e.USUARIO); });
 
         // Populate Selects
         const populate = (id, set) => {
@@ -214,6 +227,8 @@ const app = {
         populate('prod-type', types);
         populate('product-type-filter', types);
         populate('dashboard-type-filter', types);
+        populate('entry-user', users);
+        populate('exit-user', users);
     },
 
     toggleCustomInput: (id) => {
@@ -404,6 +419,63 @@ const app = {
             ` }
         ];
         ui.renderTable('products-table', filtered, prodCols);
+    },
+
+    // --- PRODUCT SEARCH MODAL LOGIC ---
+    openProductSearch: (formType) => {
+        app.state.activeSearchForm = formType; // 'entry' or 'exit'
+        document.getElementById('modal-search-input').value = '';
+        app.filterSearchProducts();
+        ui.showModal('modal-search-product');
+        // Auto focus
+        setTimeout(() => document.getElementById('modal-search-input').focus(), 100);
+    },
+
+    filterSearchProducts: () => {
+        const query = document.getElementById('modal-search-input').value.toLowerCase();
+        const resultsBody = document.getElementById('modal-search-results');
+        resultsBody.innerHTML = '';
+
+        const filtered = app.state.products.filter(p => {
+             // Only active products
+             if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return false;
+             return (p.NOME && p.NOME.toLowerCase().includes(query)) || 
+                    (p.CODIGO && p.CODIGO.toLowerCase().includes(query));
+        });
+
+        if (filtered.length === 0) {
+            resultsBody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum produto encontrado</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(p => {
+            // Find current balance for context
+            const balanceItem = app.state.balance.find(b => String(b.id) === String(p.ID));
+            const currentQty = balanceItem ? balanceItem.qty.toFixed(2) : '0.00';
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${p.CODIGO || '-'}</td>
+                <td class="px-4 py-3">${p.NOME}</td>
+                <td class="px-4 py-3">${currentQty} ${p.UNIDADE}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="app.selectSearchedProduct('${p.ID}')" class="text-xs bg-primary hover:bg-blue-700 text-white font-bold py-1 px-3 rounded transition-colors">
+                        Selecionar
+                    </button>
+                </td>
+            `;
+            resultsBody.appendChild(tr);
+        });
+    },
+
+    selectSearchedProduct: (id) => {
+        const targetId = app.state.activeSearchForm === 'entry' ? 'entry-product-id' : 'exit-product-id';
+        const select = document.getElementById(targetId);
+        if (select) {
+            select.value = id;
+        }
+        ui.closeModal('modal-search-product');
     },
 
     filterDashboard: () => {
@@ -623,7 +695,16 @@ const app = {
         const pid = document.getElementById('entry-product-id').value;
         const qty = document.getElementById('entry-qty').value;
         const origin = document.getElementById('entry-origin').value;
-        const user = document.getElementById('entry-user').value;
+        
+        let user = document.getElementById('entry-user').value;
+        if (user === 'OTHER') {
+            user = document.getElementById('entry-user-custom').value;
+            if (!user) {
+                ui.showToast("Por favor, digite o nome do responsável.", "warning");
+                return;
+            }
+        }
+        
         const obs = document.getElementById('entry-obs').value;
         
         const newId = app.getNextId(app.state.entries);
@@ -651,7 +732,16 @@ const app = {
         const pid = document.getElementById('exit-product-id').value;
         const qty = parseFloat(document.getElementById('exit-qty').value);
         const dest = document.getElementById('exit-dest').value;
-        const user = document.getElementById('exit-user').value;
+        
+        let user = document.getElementById('exit-user').value;
+        if (user === 'OTHER') {
+            user = document.getElementById('exit-user-custom').value;
+            if (!user) {
+                ui.showToast("Por favor, digite o nome do responsável.", "warning");
+                return;
+            }
+        }
+        
         const obs = document.getElementById('exit-obs').value;
         
         // Validation: Check Balance
