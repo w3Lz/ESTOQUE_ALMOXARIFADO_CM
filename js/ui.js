@@ -27,13 +27,13 @@ const ui = {
     },
 
     toggleLoading: (isLoading) => {
-        const btn = document.querySelector('.header-actions button');
+        const btn = document.querySelector('button[onclick="app.syncData()"]');
         if (btn) {
             if (isLoading) {
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                btn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">sync</span>';
                 btn.disabled = true;
             } else {
-                btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                btn.innerHTML = '<span class="material-symbols-outlined text-[20px]">sync</span>';
                 btn.disabled = false;
             }
         }
@@ -61,16 +61,26 @@ const ui = {
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${columns.length}" class="text-center">Nenhum dado encontrado</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${columns.length}" class="px-6 py-4 text-center text-gray-500">Nenhum dado encontrado</td></tr>`;
             return;
         }
 
-        data.forEach((row, index) => { // Added index for row numbering
+        data.forEach((row, index) => {
             const tr = document.createElement('tr');
-            columns.forEach(col => {
+            tr.className = "hover:bg-blue-50/50 dark:hover:bg-white/5 transition-colors border-b border-[#dadfe7] dark:border-gray-700 last:border-0";
+            
+            columns.forEach((col, colIndex) => {
                 const td = document.createElement('td');
+                // Base classes
+                td.className = "px-6 py-4 text-[#101418] dark:text-gray-200";
+                
+                // Specific styling
+                if (colIndex === 0) td.classList.add('font-medium');
+                if (col.field === 'qty' || col.field === 'QUANTIDADE' || col.field === 'ESTOQUE_MINIMO') td.classList.add('text-right'); // Align numbers right
+                if (col.field === 'actions') td.classList.add('text-center');
+
                 if (col.render) {
-                    td.innerHTML = col.render(row, index); // Pass index to render function
+                    td.innerHTML = col.render(row, index);
                 } else {
                     td.textContent = row[col.field] || '-';
                 }
@@ -78,5 +88,5 @@ const ui = {
             });
             tbody.appendChild(tr);
         });
-    },
+    }
 };

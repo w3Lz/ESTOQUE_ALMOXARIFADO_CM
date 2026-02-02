@@ -18,15 +18,40 @@ const app = {
 
     navigate: (viewId) => {
         document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.nav-links li').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-links a.nav-item').forEach(el => {
+            el.classList.remove('active');
+            // Remove active styles, add inactive styles
+            el.classList.remove('bg-[#FFD100]', 'text-primary', 'shadow-sm', 'font-bold');
+            el.classList.add('text-white/80', 'hover:bg-white/10', 'hover:text-white');
+            
+            // Fix icons/text colors inside
+            const icon = el.querySelector('.material-symbols-outlined');
+            const text = el.querySelector('p');
+            if (icon) icon.classList.remove('text-primary');
+            if (text) text.classList.remove('font-bold');
+        });
         
         document.getElementById(`view-${viewId}`).classList.remove('hidden');
         
-        const navItems = document.querySelectorAll('.nav-links li');
-        if (viewId === 'dashboard') navItems[0].classList.add('active');
-        if (viewId === 'products') navItems[1].classList.add('active');
-        if (viewId === 'entries') navItems[2].classList.add('active');
-        if (viewId === 'exits') navItems[3].classList.add('active');
+        const navItems = document.querySelectorAll('.nav-links a.nav-item');
+        let activeItem;
+        if (viewId === 'dashboard') activeItem = navItems[0];
+        if (viewId === 'products') activeItem = navItems[1];
+        if (viewId === 'entries') activeItem = navItems[2];
+        if (viewId === 'exits') activeItem = navItems[3];
+
+        if (activeItem) {
+            activeItem.classList.add('active');
+            // Add active styles, remove inactive styles
+            activeItem.classList.remove('text-white/80', 'hover:bg-white/10', 'hover:text-white');
+            activeItem.classList.add('bg-[#FFD100]', 'text-primary', 'shadow-sm', 'font-bold');
+            
+            // Fix icons/text colors inside
+            const icon = activeItem.querySelector('.material-symbols-outlined');
+            const text = activeItem.querySelector('p');
+            if (icon) icon.classList.add('text-primary');
+            if (text) text.classList.add('font-bold');
+        }
 
         const titles = {
             'dashboard': 'Visão Geral',
@@ -67,7 +92,7 @@ const app = {
             app.updateUI();
             
             const now = new Date();
-            document.getElementById('last-sync').textContent = `Sincronizado: ${now.toLocaleTimeString()}`;
+            document.getElementById('last-sync').textContent = `${now.toLocaleTimeString()}`;
             
             if (!silent && products.length > 0) ui.showToast("Dados atualizados com sucesso", "success");
 
@@ -210,8 +235,11 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: r => r.qty.toFixed(2) },
             { field: 'status', render: (row) => {
-                const cls = row.status === 'OK' ? 'status-ok' : 'status-low';
-                return `<span class="${cls}">${row.status}</span>`;
+                if (row.status === 'OK') {
+                    return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
+                } else {
+                    return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
+                }
             }}
         ];
         ui.renderTable('dashboard-table', app.state.balance, dashboardCols);
@@ -222,6 +250,7 @@ const app = {
         // Selects
         const populateSelect = (id) => {
             const sel = document.getElementById(id);
+            if (!sel) return;
             sel.innerHTML = '<option value="">Selecione...</option>';
             app.state.products.forEach(p => {
                 if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return; 
@@ -241,15 +270,13 @@ const app = {
         const histCols = [
             { field: 'DATA', render: r => {
                 if (!r.DATA) return '-';
-                // Excel dates sometimes come as serial numbers or strings. Assuming ISO string or formatted string for now from input.
-                // If it was saved by this app, it's YYYY-MM-DD.
-                return r.DATA;
+                return r.DATA; // Keep original date format for now
             }},
             { field: 'PRODUTO_ID', render: r => {
                 const p = app.state.products.find(p => String(p.ID) === String(r.PRODUTO_ID));
                 return p ? p.NOME : r.PRODUTO_ID;
             }},
-            { field: 'QUANTIDADE' },
+            { field: 'QUANTIDADE', render: r => `<span class="font-bold">${r.QUANTIDADE}</span>` },
             { field: 'ORIGEM', render: r => r.ORIGEM || r.DESTINO || '-' },
             { field: 'USUARIO' }
         ];
@@ -296,7 +323,13 @@ const app = {
             { field: 'UNIDADE' },
             { field: 'TIPO' },
             { field: 'ESTOQUE_MINIMO' },
-            { field: 'actions', render: (row) => `<div style="text-align: center;"><button class="btn btn-sm btn-outline" style="color:var(--primary-blue); border-color:var(--primary-blue)" onclick="app.editProduct('${row.ID}')"><i class="fas fa-edit"></i></button></div>` }
+            { field: 'actions', render: (row) => `
+                <div class="flex items-center justify-center">
+                    <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-primary dark:text-blue-300 transition-colors" onclick="app.editProduct('${row.ID}')">
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                </div>
+            ` }
         ];
         ui.renderTable('products-table', filtered, prodCols);
     },
