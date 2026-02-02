@@ -75,6 +75,9 @@ const auth = {
             auth.user = null;
             ui.updateAuthUI(null);
         }
+        // Clear storage
+        localStorage.removeItem('g_token');
+        localStorage.removeItem('g_token_exp');
     },
 
     handleAuthSuccess: (resp) => {
@@ -88,17 +91,54 @@ const auth = {
         */
         if (resp && resp.access_token) {
             gapi.client.setToken(resp);
+            
+            // Save to localStorage
+            const expiresIn = resp.expires_in; // seconds
+            const expirationTime = Date.now() + (expiresIn * 1000);
+            localStorage.setItem('g_token', JSON.stringify(resp));
+            localStorage.setItem('g_token_exp', expirationTime);
         }
 
-        auth.user = { name: "Usuário Logado" }; 
-        ui.updateAuthUI(auth.user);
-        
-        // Reload data with full permissions
-        app.initData();
+        auth.getUserProfile();
     },
     
+    getUserProfile: async () => {
+        // Try to get user info if possible, or just mock
+        try {
+            // Optional: Request user info if scope allows 'profile email'
+            // For now, simple mock or just "Logado"
+            // If you added 'https://www.googleapis.com/auth/userinfo.profile' to scopes:
+            /*
+            const res = await gapi.client.request({ path: 'https://www.googleapis.com/oauth2/v3/userinfo' });
+            auth.user = { name: res.result.name, picture: res.result.picture };
+            */
+            auth.user = { name: "Usuário Conectado" };
+            ui.updateAuthUI(auth.user);
+            app.initData();
+        } catch (e) {
+            console.error(e);
+            auth.user = { name: "Usuário" };
+            ui.updateAuthUI(auth.user);
+        }
+    },
+
     checkAuth: () => {
-        // Just a placeholder. Implicit flow state is managed by the browser session/token validity.
+        const storedToken = localStorage.getItem('g_token');
+        const expirationTime = localStorage.getItem('g_token_exp');
+
+        if (storedToken && expirationTime) {
+            const now = Date.now();
+            if (now < parseInt(expirationTime)) {
+                console.log("Token recuperado do cache.");
+                const tokenObj = JSON.parse(storedToken);
+                gapi.client.setToken(tokenObj);
+                auth.getUserProfile();
+            } else {
+                console.log("Token expirado.");
+                localStorage.removeItem('g_token');
+                localStorage.removeItem('g_token_exp');
+            }
+        }
     },
     
     // Helper to check if we can write
