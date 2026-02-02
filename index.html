@@ -104,6 +104,9 @@
                 </div>
                 <div class="flex items-center gap-6">
                     <div class="flex gap-2 header-actions">
+                        <button class="flex items-center justify-center rounded-lg size-10 bg-[#f0f2f5] dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#101418] dark:text-white transition-colors" onclick="window.print()">
+                            <span class="material-symbols-outlined text-[20px]">print</span>
+                        </button>
                         <button class="flex items-center justify-center rounded-lg size-10 bg-[#f0f2f5] dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#101418] dark:text-white transition-colors" onclick="app.syncData()">
                             <span class="material-symbols-outlined text-[20px]">sync</span>
                         </button>
@@ -147,7 +150,7 @@
                                 </div>
                             </div>
                             <!-- Card 3 (Alert) -->
-                            <div class="group flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-6 border-l-4 border-l-[#FFD100] border-y border-r border-y-gray-100 dark:border-y-gray-700 border-r-gray-100 dark:border-r-gray-700 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                            <div onclick="app.showLowStock()" class="cursor-pointer group flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-6 border-l-4 border-l-[#FFD100] border-y border-r border-y-gray-100 dark:border-y-gray-700 border-r-gray-100 dark:border-r-gray-700 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                                 <div class="absolute top-0 right-0 p-16 bg-[#FFD100] opacity-5 rounded-bl-full group-hover:opacity-10 transition-opacity"></div>
                                 <div class="flex justify-between items-start z-10">
                                     <div class="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-[#b89500] dark:text-[#FFD100]">

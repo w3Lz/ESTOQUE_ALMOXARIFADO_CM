@@ -42,3 +42,57 @@ div:where(.swal2-container) div:where(.swal2-popup) {
 .main-scroll {
     height: calc(100vh - 80px); /* Adjust based on header height */
 }
+
+/* Print Styles */
+@media print {
+    aside, 
+    .header-actions,
+    .view:not(#view-dashboard),
+    #view-dashboard > .grid, /* Hide stats cards */
+    #dashboard-search,
+    #dashboard-type-filter,
+    .material-symbols-outlined {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+        color: black;
+        overflow: visible !important;
+    }
+
+    main {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .view {
+        display: block !important;
+        padding: 0 !important;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        color: black !important;
+    }
+
+    h3 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: black !important;
+        text-align: center;
+    }
+    
+    h3::after {
+        content: " - Relatório de Estoque";
+    }
+}

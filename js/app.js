@@ -353,6 +353,11 @@ const app = {
             filtered = filtered.filter(item => item.type === typeFilter);
         }
 
+        // Update Stats Cards
+        document.getElementById('total-items').textContent = filtered.length;
+        const lowStock = filtered.filter(i => i.status === 'ESTOQUE BAIXO').length;
+        document.getElementById('low-stock-count').textContent = lowStock;
+
         const dashboardCols = [
             { field: 'code' },
             { field: 'name' },
@@ -369,6 +374,33 @@ const app = {
         ];
 
         ui.renderTable('dashboard-table', filtered, dashboardCols);
+    },
+
+    showLowStock: () => {
+        // Reset filters
+        document.getElementById('dashboard-search').value = '';
+        document.getElementById('dashboard-type-filter').value = '';
+        
+        // Filter strictly by Low Stock
+        const filtered = app.state.balance.filter(i => i.status === 'ESTOQUE BAIXO');
+        
+        // Update Stats Cards
+        document.getElementById('total-items').textContent = filtered.length;
+        document.getElementById('low-stock-count').textContent = filtered.length;
+
+        const dashboardCols = [
+            { field: 'code' },
+            { field: 'name' },
+            { field: 'unit' },
+            { field: 'type' },
+            { field: 'qty', render: r => r.qty.toFixed(2) },
+            { field: 'status', render: (row) => {
+                return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
+            }}
+        ];
+
+        ui.renderTable('dashboard-table', filtered, dashboardCols);
+        ui.showToast("Exibindo apenas itens com Estoque Baixo", "warning");
     },
 
     filterTable: (tableId, query) => {
