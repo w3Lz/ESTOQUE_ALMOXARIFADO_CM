@@ -88,5 +88,26 @@ const graph = {
             ui.showToast("Erro ao atualizar: " + (error.result?.error?.message || error.message), 'error');
             throw error;
         }
+    },
+
+    createSheet: async (title) => {
+        try {
+            const response = await gapi.client.sheets.spreadsheets.batchUpdate({
+                spreadsheetId: Config.spreadsheetId,
+                resource: {
+                    requests: [{
+                        addSheet: {
+                            properties: {
+                                title: title
+                            }
+                        }
+                    }]
+                }
+            });
+            return response;
+        } catch (error) {
+            console.error('Create Sheet Error:', error);
+            // Ignore if sheet already exists (code 400 usually)
+        }
     }
 };

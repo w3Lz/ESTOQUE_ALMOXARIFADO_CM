@@ -625,10 +625,9 @@ const app = {
     // --- AUDIT LOGS ---
     logAction: async (action, details) => {
         const user = (auth.user && auth.user.name) || 'Desconhecido';
-        const now = new Date().toISOString(); // ISO for storage
-        // Format for display can be handled in render
+        const now = new Date().toISOString(); 
         
-        // ID generation for Logs (simple timestamp based or count)
+        // ID generation
         const newId = app.getNextId(app.state.logs);
         
         // Columns: ID, DATA_HORA, USUARIO, ACAO, DETALHES
@@ -636,7 +635,8 @@ const app = {
         
         try {
             await graph.addRow('LOGS', [row]);
-            // Update local state immediately for UI
+            
+            // Update local state
             app.state.logs.push({
                 ID: newId,
                 DATA_HORA: now,
@@ -645,8 +645,19 @@ const app = {
                 DETALHES: details
             });
         } catch (e) {
-            console.error("Erro ao gravar log:", e);
-            // Non-blocking error for user actions, but log to console
+            console.error("Erro ao gravar log (tentando criar aba LOGS...):", e);
+            // If error is likely due to missing sheet, try to create it
+            // Code 400 usually means "Unable to parse range" if sheet is missing
+            try {
+                 await graph.createSheet('LOGS');
+                 // Add Header
+                 await graph.addRow('LOGS', [['ID', 'DATA_HORA', 'USUARIO', 'ACAO', 'DETALHES']]);
+                 // Retry log
+                 await graph.addRow('LOGS', [row]);
+                 app.state.logs.push({ ID: newId, DATA_HORA: now, USUARIO: user, ACAO: action, DETALHES: details });
+            } catch (err2) {
+                console.error("Falha final ao criar/gravar log:", err2);
+            }
         }
     },
 

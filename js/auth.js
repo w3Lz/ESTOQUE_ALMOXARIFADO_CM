@@ -136,14 +136,18 @@ const auth = {
             const now = Date.now();
             if (now < parseInt(expirationTime)) {
                 console.log("Token recuperado do cache.");
-                const tokenObj = JSON.parse(storedToken);
-                gapi.client.setToken(tokenObj);
-                auth.getUserProfile();
+                // Ensure gapi client is ready
+                if (gapi.client) {
+                    const tokenObj = JSON.parse(storedToken);
+                    gapi.client.setToken(tokenObj);
+                    auth.getUserProfile();
+                } else {
+                    console.warn("GAPI Client not ready for token restoration. Retrying in 1s...");
+                    setTimeout(auth.checkAuth, 1000);
+                }
             } else {
                 console.log("Token expirado. Tentando renovação silenciosa...");
                 if (auth.tokenClient) {
-                    // Tenta renovar sem popup (se o usuário já estiver logado no Google no navegador)
-                    // Se falhar, o callback do initTokenClient receberá um erro e fará logout
                     auth.tokenClient.requestAccessToken({prompt: 'none'});
                 }
             }
