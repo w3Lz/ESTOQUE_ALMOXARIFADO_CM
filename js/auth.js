@@ -38,8 +38,7 @@ const auth = {
         console.log("GAPI inicializado. Tentando ler dados...");
         app.initData();
         
-        // Check if we have a cached token (optional, simple check)
-        auth.checkAuth();
+        // Auth check moved to initializeGisClient to ensure tokenClient is ready
     },
 
     initializeGisClient: () => {
@@ -48,12 +47,19 @@ const auth = {
             scope: Config.scopes,
             callback: (resp) => {
                 if (resp.error !== undefined) {
+                    console.warn("Erro na autenticação:", resp);
+                    // Se falhar o silent refresh, limpa tudo
+                    if (resp.error === 'interaction_required' || resp.error === 'login_required') {
+                        auth.signOut();
+                    }
                     throw (resp);
                 }
                 auth.handleAuthSuccess(resp);
             },
         });
         auth.gisInited = true;
+        // Check auth after GIS init to enable silent refresh possibility
+        auth.checkAuth();
     },
 
     signIn: () => {
@@ -134,9 +140,12 @@ const auth = {
                 gapi.client.setToken(tokenObj);
                 auth.getUserProfile();
             } else {
-                console.log("Token expirado.");
-                localStorage.removeItem('g_token');
-                localStorage.removeItem('g_token_exp');
+                console.log("Token expirado. Tentando renovação silenciosa...");
+                if (auth.tokenClient) {
+                    // Tenta renovar sem popup (se o usuário já estiver logado no Google no navegador)
+                    // Se falhar, o callback do initTokenClient receberá um erro e fará logout
+                    auth.tokenClient.requestAccessToken({prompt: 'none'});
+                }
             }
         }
     },
