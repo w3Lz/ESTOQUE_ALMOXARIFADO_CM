@@ -87,6 +87,20 @@ const ui = {
                 tr.appendChild(td);
             });
             tbody.appendChild(tr);
+
+            // Add Observation Row if it exists (Generic for all tables)
+            // Checks for 'OBSERVACAO' or 'obs' field
+            const obs = row.OBSERVACAO || row.obs;
+            if (obs && obs.trim() !== "") {
+                const trObs = document.createElement('tr');
+                trObs.className = "bg-gray-50/50 dark:bg-gray-800/30 border-b border-[#dadfe7] dark:border-gray-700";
+                trObs.innerHTML = `
+                    <td colspan="${columns.length}" class="px-6 py-2 text-xs text-gray-500 italic">
+                        <span class="font-bold not-italic">Obs:</span> ${obs}
+                    </td>
+                `;
+                tbody.appendChild(trObs);
+            }
         });
     }
 };
