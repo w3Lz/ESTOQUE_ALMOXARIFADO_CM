@@ -13,6 +13,9 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <!-- Theme Configuration -->
     <script id="tailwind-config">
         tailwind.config = {
@@ -69,6 +72,10 @@
                         <a href="#" onclick="app.navigate('exits')" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group">
                             <span class="material-symbols-outlined text-[24px]">call_made</span>
                             <p class="text-sm font-medium leading-normal">Saídas</p>
+                        </a>
+                        <a href="#" onclick="app.navigate('reports')" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors group">
+                            <span class="material-symbols-outlined text-[24px]">bar_chart</span>
+                            <p class="text-sm font-medium leading-normal">Indicadores</p>
                         </a>
                     </nav>
                 </div>
@@ -463,6 +470,84 @@
                         </div>
                     </div>
 
+                    <!-- VIEW: REPORTS -->
+                    <div id="view-reports" class="view hidden flex flex-col gap-8 w-full">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Chart 1: Products by Type -->
+                            <div class="rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <h3 class="text-lg font-bold mb-4 text-[#101418] dark:text-white">Produtos por Tipo</h3>
+                                <div class="h-64 flex items-center justify-center">
+                                    <canvas id="chart-products-by-type"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Chart 2: Top Exits -->
+                            <div class="rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <h3 class="text-lg font-bold mb-4 text-[#101418] dark:text-white">Top 5 Produtos com Mais Saídas</h3>
+                                <div class="h-64 flex items-center justify-center">
+                                    <canvas id="chart-top-exits"></canvas>
+                                </div>
+                            </div>
+
+                             <!-- Chart 3: Movements History -->
+                            <div class="lg:col-span-2 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <h3 class="text-lg font-bold mb-4 text-[#101418] dark:text-white">Histórico de Movimentações (Últimos 6 Meses)</h3>
+                                <div class="h-72 flex items-center justify-center">
+                                    <canvas id="chart-movements"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Chart 4: Product Frequency -->
+                            <div class="lg:col-span-2 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                                    <h3 class="text-lg font-bold text-[#101418] dark:text-white">Análise de Saída por Produto (Diário)</h3>
+                                    <div class="w-full md:w-80 flex gap-2">
+                                        <select id="report-product-select" onchange="app.renderProductFrequencyChart()" class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+                                            <option value="">Selecione um produto...</option>
+                                        </select>
+                                        <button type="button" onclick="app.openProductSearch('report')" class="flex items-center justify-center bg-blue-100 hover:bg-blue-200 dark:bg-primary/20 dark:hover:bg-primary/30 text-primary dark:text-blue-300 rounded-lg px-3 transition-colors" title="Buscar Produto">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="h-72 flex items-center justify-center">
+                                    <canvas id="chart-product-frequency"></canvas>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2 text-center">Exibindo histórico de saídas agrupado por dia.</p>
+                            </div>
+
+                            <!-- Chart 5: Monthly Exits (Stacked) -->
+                            <div class="lg:col-span-2 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                                    <h3 class="text-lg font-bold text-[#101418] dark:text-white">Saídas Mensais por Tipo</h3>
+                                    <div class="w-full md:w-48 flex gap-2">
+                                        <select id="report-exit-year-select" onchange="app.renderMonthlyExitsChart()" class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+                                            <!-- Populated by JS -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="h-72 flex items-center justify-center">
+                                    <canvas id="chart-monthly-exits"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Chart 6: Monthly Entries (Stacked) -->
+                            <div class="lg:col-span-2 rounded-xl bg-white dark:bg-surface-dark p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                                    <h3 class="text-lg font-bold text-[#101418] dark:text-white">Entradas Mensais por Tipo</h3>
+                                    <div class="w-full md:w-48 flex gap-2">
+                                        <select id="report-entry-year-select" onchange="app.renderMonthlyEntriesChart()" class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+                                            <!-- Populated by JS -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="h-72 flex items-center justify-center">
+                                    <canvas id="chart-monthly-entries"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -538,7 +623,7 @@
     <script src="https://accounts.google.com/gsi/client"></script>
 
     <!-- MODAL SEARCH PRODUCT -->
-    <div id="modal-search-product" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div id="modal-search-product" class="fixed inset-0 z-[60] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-gray-900/75 transition-opacity backdrop-blur-sm" onclick="ui.closeModal('modal-search-product')"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -602,9 +687,14 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">Produto</label>
-                                <select id="edit-entry-product-id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
-                                    <option value="">Carregando...</option>
-                                </select>
+                                <div class="flex gap-2">
+                                    <select id="edit-entry-product-id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                    <button type="button" onclick="app.openProductSearch('edit-entry')" class="flex items-center justify-center bg-blue-100 hover:bg-blue-200 dark:bg-primary/20 dark:hover:bg-primary/30 text-primary dark:text-blue-300 rounded-lg px-3 transition-colors" title="Buscar Produto">
+                                        <span class="material-symbols-outlined">search</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -651,9 +741,14 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">Produto</label>
-                                <select id="edit-exit-product-id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
-                                    <option value="">Carregando...</option>
-                                </select>
+                                <div class="flex gap-2">
+                                    <select id="edit-exit-product-id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                    <button type="button" onclick="app.openProductSearch('edit-exit')" class="flex items-center justify-center bg-blue-100 hover:bg-blue-200 dark:bg-primary/20 dark:hover:bg-primary/30 text-primary dark:text-blue-300 rounded-lg px-3 transition-colors" title="Buscar Produto">
+                                        <span class="material-symbols-outlined">search</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>

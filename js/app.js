@@ -4,6 +4,7 @@ const app = {
         entries: [],
         exits: [],
         balance: [],
+        charts: {}, // Store Chart.js instances
         sort: {
             column: null,
             direction: 'asc' // or 'desc'
@@ -51,6 +52,7 @@ const app = {
         if (viewId === 'products') activeItem = navItems[1];
         if (viewId === 'entries') activeItem = navItems[2];
         if (viewId === 'exits') activeItem = navItems[3];
+        if (viewId === 'reports') activeItem = navItems[4];
 
         if (activeItem) {
             activeItem.classList.add('active');
@@ -69,9 +71,15 @@ const app = {
             'dashboard': 'Visão Geral',
             'products': 'Produtos',
             'entries': 'Entradas',
-            'exits': 'Saídas'
+            'exits': 'Saídas',
+            'reports': 'Indicadores e Gráficos'
         };
         document.getElementById('page-title').textContent = titles[viewId];
+        
+        // Render charts if opening reports view
+        if (viewId === 'reports') {
+            app.renderCharts();
+        }
     },
 
     startPolling: () => {
@@ -103,6 +111,11 @@ const app = {
             app.updateDatalists(); // Ensure lists are populated
             app.updateUI();
             
+            // Update charts if view is active
+            if (!document.getElementById('view-reports').classList.contains('hidden')) {
+                app.renderCharts();
+            }
+
             const now = new Date();
             document.getElementById('last-sync').textContent = `${now.toLocaleTimeString()}`;
             
@@ -229,6 +242,73 @@ const app = {
         populate('dashboard-type-filter', types);
         populate('entry-user', users);
         populate('exit-user', users);
+
+        // Populate Report Product Select
+        const reportSel = document.getElementById('report-product-select');
+        if (reportSel) {
+            const currentVal = reportSel.value;
+            reportSel.innerHTML = '<option value="">Selecione um produto...</option>';
+            app.state.products.forEach(p => {
+                if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return;
+                const opt = document.createElement('option');
+                opt.value = p.ID;
+                opt.textContent = `${p.CODIGO || p.ID} - ${p.NOME}`;
+                reportSel.appendChild(opt);
+            });
+            if (currentVal) reportSel.value = currentVal;
+        }
+
+        // Populate Report Year Selects
+        const populateYearSelect = (selectId, dataList) => {
+            const yearSel = document.getElementById(selectId);
+            if (!yearSel) return;
+            
+            const currentVal = yearSel.value;
+            yearSel.innerHTML = '';
+            
+            const years = new Set();
+            const currentYear = new Date().getFullYear();
+            
+            // Always add current year to ensure chart works even without data
+            // But user asked to show ONLY years with data. 
+            // However, we need a default selected year. If no data, select current.
+            // If data exists, we should still probably include current year for UX? 
+            // User requirement: "mostrar somente os anos que tem dados na planilha"
+            // Let's stick to strict requirement, but fallback to current if empty.
+            
+            if (dataList) {
+                dataList.forEach(e => {
+                    if (e.DATA) {
+                        const y = parseInt(e.DATA.split('-')[0]);
+                        if (!isNaN(y)) years.add(y);
+                    }
+                });
+            }
+
+            if (years.size === 0) {
+                years.add(currentYear);
+            }
+
+            const sortedYears = Array.from(years).sort((a,b) => b - a); // Descending
+            
+            sortedYears.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearSel.appendChild(opt);
+            });
+
+            // If previously selected value is still in the list, keep it. 
+            // Otherwise select the first one (most recent year).
+            if (currentVal && years.has(parseInt(currentVal))) {
+                yearSel.value = currentVal;
+            } else {
+                yearSel.value = sortedYears[0];
+            }
+        };
+
+        populateYearSelect('report-exit-year-select', app.state.exits);
+        populateYearSelect('report-entry-year-select', app.state.entries);
     },
 
     toggleCustomInput: (id) => {
@@ -484,10 +564,23 @@ const app = {
     },
 
     selectSearchedProduct: (id) => {
-        const targetId = app.state.activeSearchForm === 'entry' ? 'entry-product-id' : 'exit-product-id';
+        const targetMap = {
+            'entry': 'entry-product-id',
+            'exit': 'exit-product-id',
+            'edit-entry': 'edit-entry-product-id',
+            'edit-exit': 'edit-exit-product-id',
+            'report': 'report-product-select'
+        };
+        const targetId = targetMap[app.state.activeSearchForm];
+        
         const select = document.getElementById(targetId);
         if (select) {
             select.value = id;
+            
+            // Special trigger for reports
+            if (app.state.activeSearchForm === 'report') {
+                app.renderProductFrequencyChart();
+            }
         }
         ui.closeModal('modal-search-product');
     },
@@ -701,6 +794,505 @@ const app = {
         document.getElementById('prod-min').value = p.ESTOQUE_MINIMO || 0;
         
         ui.showModal('modal-product');
+    },
+
+    renderCharts: () => {
+        // Register DataLabels plugin globally or per chart
+        Chart.register(ChartDataLabels);
+
+        // Define common options for datalabels
+        const commonDataLabels = {
+            color: '#fff',
+            font: {
+                weight: 'bold'
+            },
+            formatter: (value) => value > 0 ? value : '' // Hide zeros
+        };
+
+        // --- 1. Products by Type (Pie) ---
+        const typeCounts = {};
+        app.state.products.forEach(p => {
+            if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return;
+            const type = p.TIPO || 'Outros';
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+
+        const ctxType = document.getElementById('chart-products-by-type');
+        if (ctxType) {
+            if (app.state.charts.type) app.state.charts.type.destroy();
+            app.state.charts.type = new Chart(ctxType, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeCounts),
+                    datasets: [{
+                        data: Object.values(typeCounts),
+                        backgroundColor: ['#00398f', '#FFD100', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#8B5CF6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        datalabels: {
+                            color: '#fff',
+                            formatter: (value, ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => { sum += data; });
+                                let percentage = (value*100 / sum).toFixed(1)+"%";
+                                return percentage;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 2. Top 5 Exits (Bar) ---
+        const exitCounts = {};
+        app.state.exits.forEach(e => {
+            const pid = e.PRODUTO_ID;
+            const qty = parseFloat(e.QUANTIDADE) || 0;
+            exitCounts[pid] = (exitCounts[pid] || 0) + qty;
+        });
+
+        const sortedExits = Object.entries(exitCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        const topLabels = sortedExits.map(([pid]) => {
+            const p = app.state.products.find(p => String(p.ID) === String(pid));
+            return p ? p.NOME : `ID ${pid}`;
+        });
+        const topData = sortedExits.map(([, qty]) => qty);
+
+        const ctxTop = document.getElementById('chart-top-exits');
+        if (ctxTop) {
+            if (app.state.charts.top) app.state.charts.top.destroy();
+            app.state.charts.top = new Chart(ctxTop, {
+                type: 'bar',
+                data: {
+                    labels: topLabels,
+                    datasets: [{
+                        label: 'Quantidade Saída',
+                        data: topData,
+                        backgroundColor: '#00398f',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#555', // Darker for white bg
+                            font: { weight: 'bold' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 3. Movements History (Line) ---
+        // Last 6 months
+        const months = [];
+        const today = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            months.push(d.toLocaleString('pt-BR', { month: 'short', year: '2-digit' }));
+        }
+
+        const entriesData = new Array(6).fill(0);
+        const exitsData = new Array(6).fill(0);
+
+        const processHistory = (list, targetArray) => {
+            list.forEach(item => {
+                // Fix for date parsing: manually parse YYYY-MM-DD to avoid timezone issues or use simple substring
+                if (!item.DATA) return;
+                const parts = item.DATA.split('-');
+                if (parts.length !== 3) return;
+                
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // 0-based
+                // const day = parseInt(parts[2]);
+                
+                // Calculate difference in months from today
+                // Logic: (YearDiff * 12) + (MonthDiff)
+                const diffMonths = (today.getFullYear() - year) * 12 + (today.getMonth() - month);
+                
+                if (diffMonths >= 0 && diffMonths < 6) {
+                    // Index 5 is current month (diff=0), 0 is 5 months ago (diff=5)
+                    const index = 5 - diffMonths;
+                    targetArray[index] += parseFloat(item.QUANTIDADE) || 0;
+                }
+            });
+        };
+
+        processHistory(app.state.entries, entriesData);
+        processHistory(app.state.exits, exitsData);
+
+        const ctxMov = document.getElementById('chart-movements');
+        if (ctxMov) {
+            if (app.state.charts.mov) app.state.charts.mov.destroy();
+            app.state.charts.mov = new Chart(ctxMov, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Entradas',
+                            data: entriesData,
+                            borderColor: '#10B981', // Green
+                            backgroundColor: '#10B981',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Saídas',
+                            data: exitsData,
+                            borderColor: '#EF4444', // Red
+                            backgroundColor: '#EF4444',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        datalabels: {
+                            display: 'auto',
+                            color: '#555',
+                            align: 'top',
+                            anchor: 'end'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // --- 4. Product Frequency (Initial Call or Update) ---
+        app.renderProductFrequencyChart();
+
+        // --- 5. Monthly Exits (Initial Call or Update) ---
+        app.renderMonthlyExitsChart();
+
+        // --- 6. Monthly Entries (Initial Call or Update) ---
+        app.renderMonthlyEntriesChart();
+    },
+
+    renderProductFrequencyChart: () => {
+        const pid = document.getElementById('report-product-select').value;
+        const ctxFreq = document.getElementById('chart-product-frequency');
+        
+        if (!ctxFreq) return;
+        
+        // Destroy existing chart if any
+        if (app.state.charts.freq) {
+            app.state.charts.freq.destroy();
+            app.state.charts.freq = null;
+        }
+
+        if (!pid) {
+            // Placeholder empty chart or message
+            // We'll create an empty chart to keep layout consistent
+            app.state.charts.freq = new Chart(ctxFreq, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{ label: 'Selecione um produto', data: [] }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Selecione um produto acima para ver os dados' }
+                    },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+            return;
+        }
+
+        // Filter exits for this product
+        const productExits = app.state.exits.filter(e => String(e.PRODUTO_ID) === String(pid));
+        
+        // Group by Date
+        const dateMap = {};
+        productExits.forEach(e => {
+            if (!e.DATA) return;
+            // Standardize date format YYYY-MM-DD
+            const date = e.DATA; 
+            const qty = parseFloat(e.QUANTIDADE) || 0;
+            
+            if (!dateMap[date]) {
+                dateMap[date] = 0;
+            }
+            dateMap[date] += qty;
+        });
+
+        // Sort Dates
+        const sortedDates = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
+        
+        // If too many dates, maybe take last 30?
+        // Let's take all for now, but if > 50, slice last 50
+        let displayDates = sortedDates;
+        if (sortedDates.length > 50) {
+            displayDates = sortedDates.slice(-50);
+        }
+
+        const dataValues = displayDates.map(d => dateMap[d]);
+        // Format dates for display (DD/MM)
+        const labels = displayDates.map(d => {
+            const parts = d.split('-');
+            return `${parts[2]}/${parts[1]}`;
+        });
+
+        const productName = app.state.products.find(p => String(p.ID) === String(pid))?.NOME || 'Produto';
+
+        app.state.charts.freq = new Chart(ctxFreq, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `Quantidade Saída - ${productName}`,
+                    data: dataValues,
+                    backgroundColor: '#FFD100', // Accent Color
+                    borderColor: '#e6bc00',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }, // Title already says product name usually, or we keep legend
+                    tooltip: {
+                        callbacks: {
+                            title: (context) => {
+                                // Find full date from original sorted array using index
+                                const index = context[0].dataIndex;
+                                const originalDate = displayDates[index];
+                                const parts = originalDate.split('-');
+                                return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+                            }
+                        }
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#555',
+                        font: { weight: 'bold' }
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        title: { display: true, text: 'Quantidade' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Dia' }
+                    }
+                }
+            }
+        });
+    },
+
+    renderMonthlyExitsChart: () => {
+        const year = parseInt(document.getElementById('report-exit-year-select').value);
+        const ctxMonthly = document.getElementById('chart-monthly-exits');
+        
+        if (!ctxMonthly || !year) return;
+
+        // Destroy existing
+        if (app.state.charts.monthlyExit) {
+            app.state.charts.monthlyExit.destroy();
+            app.state.charts.monthlyExit = null;
+        }
+
+        // Init Data Map: { MonthIndex: { Type: Qty } }
+        const monthlyData = {}; 
+        const types = new Set();
+        const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        app.state.exits.forEach(e => {
+            if (!e.DATA) return;
+            const parts = e.DATA.split('-');
+            if (parts.length !== 3) return;
+            
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1; // 0-based
+            
+            if (y === year && m >= 0 && m < 12) {
+                // Find Product Type
+                const prod = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID));
+                const type = prod ? (prod.TIPO || 'Outros') : 'Desconhecido';
+                
+                types.add(type);
+                if (!monthlyData[m]) monthlyData[m] = {};
+                if (!monthlyData[m][type]) monthlyData[m][type] = 0;
+                
+                monthlyData[m][type] += parseFloat(e.QUANTIDADE) || 0;
+            }
+        });
+
+        // Prepare Datasets
+        const datasets = Array.from(types).map((type, index) => {
+            // Color Palette
+            const colors = ['#00398f', '#FFD100', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#8B5CF6'];
+            const color = colors[index % colors.length];
+
+            const data = monthLabels.map((_, mIndex) => {
+                return monthlyData[mIndex] ? (monthlyData[mIndex][type] || 0) : 0;
+            });
+
+            return {
+                label: type,
+                data: data,
+                backgroundColor: color,
+                borderRadius: 4,
+                stack: 'Stack 0'
+            };
+        });
+
+        // If no data, show empty chart structure
+        if (datasets.length === 0) {
+            datasets.push({
+                label: 'Sem dados',
+                data: new Array(12).fill(0),
+                backgroundColor: '#e5e7eb'
+            });
+        }
+
+        app.state.charts.monthlyExit = new Chart(ctxMonthly, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { beginAtZero: true, stacked: true }
+                },
+                plugins: {
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold' },
+                        formatter: (val) => val > 0 ? Math.round(val) : '' // Hide zeros, show integer for clean look
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    },
+
+    renderMonthlyEntriesChart: () => {
+        const year = parseInt(document.getElementById('report-entry-year-select').value);
+        const ctxMonthly = document.getElementById('chart-monthly-entries');
+        
+        if (!ctxMonthly || !year) return;
+
+        // Destroy existing
+        if (app.state.charts.monthlyEntry) {
+            app.state.charts.monthlyEntry.destroy();
+            app.state.charts.monthlyEntry = null;
+        }
+
+        // Init Data Map
+        const monthlyData = {}; 
+        const types = new Set();
+        const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        app.state.entries.forEach(e => {
+            if (!e.DATA) return;
+            const parts = e.DATA.split('-');
+            if (parts.length !== 3) return;
+            
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1; // 0-based
+            
+            if (y === year && m >= 0 && m < 12) {
+                // Find Product Type
+                const prod = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID));
+                const type = prod ? (prod.TIPO || 'Outros') : 'Desconhecido';
+                
+                types.add(type);
+                if (!monthlyData[m]) monthlyData[m] = {};
+                if (!monthlyData[m][type]) monthlyData[m][type] = 0;
+                
+                monthlyData[m][type] += parseFloat(e.QUANTIDADE) || 0;
+            }
+        });
+
+        // Prepare Datasets
+        const datasets = Array.from(types).map((type, index) => {
+            // Color Palette (Same as exits for consistency)
+            const colors = ['#00398f', '#FFD100', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#8B5CF6'];
+            const color = colors[index % colors.length];
+
+            const data = monthLabels.map((_, mIndex) => {
+                return monthlyData[mIndex] ? (monthlyData[mIndex][type] || 0) : 0;
+            });
+
+            return {
+                label: type,
+                data: data,
+                backgroundColor: color,
+                borderRadius: 4,
+                stack: 'Stack 0'
+            };
+        });
+
+        if (datasets.length === 0) {
+            datasets.push({
+                label: 'Sem dados',
+                data: new Array(12).fill(0),
+                backgroundColor: '#e5e7eb'
+            });
+        }
+
+        app.state.charts.monthlyEntry = new Chart(ctxMonthly, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { beginAtZero: true, stacked: true }
+                },
+                plugins: {
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold' },
+                        formatter: (val) => val > 0 ? Math.round(val) : '' 
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
     },
 
     handleEntry: async (e) => {
