@@ -303,11 +303,25 @@ const app = {
         ];
         
         // Entradas: ORIGEM
-        const entryCols = [...histCols]; 
+        const entryCols = [...histCols];
+        entryCols.push({ field: 'actions', render: (row) => `
+            <div class="flex items-center justify-center">
+                <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-primary dark:text-blue-300 transition-colors" onclick="app.editEntry('${row.ID}')">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+            </div>
+        `});
         
         // Saidas: DESTINO
         const exitCols = [...histCols];
         exitCols[3] = { field: 'DESTINO', render: r => r.DESTINO || '-' };
+        exitCols.push({ field: 'actions', render: (row) => `
+            <div class="flex items-center justify-center">
+                <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-orange-600 dark:text-orange-400 transition-colors" onclick="app.editExit('${row.ID}')">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+            </div>
+        `});
 
         const sortedEntries = [...app.state.entries].sort((a,b) => new Date(b.CRIADO_EM) - new Date(a.CRIADO_EM)).slice(0, 5);
         const sortedExits = [...app.state.exits].sort((a,b) => new Date(b.CRIADO_EM) - new Date(a.CRIADO_EM)).slice(0, 5);
@@ -765,6 +779,124 @@ const app = {
             ui.showToast("Saída registrada!", "success");
         } catch (err) {
             console.error(err);
+        } finally {
+            ui.toggleLoading(false);
+        }
+    },
+
+    // --- EDIT ENTRY LOGIC ---
+    editEntry: (id) => {
+        const entry = app.state.entries.find(e => String(e.ID) === String(id));
+        if (!entry) return;
+
+        document.getElementById('edit-entry-id').value = entry.ID;
+        document.getElementById('edit-entry-date').value = entry.DATA || '';
+        document.getElementById('edit-entry-qty').value = entry.QUANTIDADE || '';
+        document.getElementById('edit-entry-origin').value = entry.ORIGEM || '';
+        document.getElementById('edit-entry-user').value = entry.USUARIO || '';
+        document.getElementById('edit-entry-obs').value = entry.OBSERVACAO || '';
+
+        // Populate Product Select
+        const prodSelect = document.getElementById('edit-entry-product-id');
+        prodSelect.innerHTML = '<option value="">Selecione...</option>';
+        app.state.products.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.ID;
+            opt.textContent = `${p.CODIGO || p.ID} - ${p.NOME}`;
+            prodSelect.appendChild(opt);
+        });
+        prodSelect.value = entry.PRODUTO_ID;
+
+        ui.showModal('modal-edit-entry');
+    },
+
+    saveEntryEdit: async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-entry-id').value;
+        const date = document.getElementById('edit-entry-date').value;
+        const pid = document.getElementById('edit-entry-product-id').value;
+        const qty = document.getElementById('edit-entry-qty').value;
+        const origin = document.getElementById('edit-entry-origin').value;
+        const user = document.getElementById('edit-entry-user').value;
+        const obs = document.getElementById('edit-entry-obs').value;
+
+        ui.toggleLoading(true);
+        try {
+            const index = app.state.entries.findIndex(e => String(e.ID) === String(id));
+            if (index === -1) throw new Error("Entrada não encontrada");
+            
+            const original = app.state.entries[index];
+            const rowNum = index + 2; // Header + 1-based index
+
+            // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, ORIGEM, USUARIO, OBSERVACAO, CRIADO_EM
+            const rowData = [id, date, pid, qty, origin, user, obs, original.CRIADO_EM];
+            
+            await graph.updateRow('ENTRADAS', rowNum, rowData);
+            ui.showToast("Entrada atualizada!", "success");
+            ui.closeModal('modal-edit-entry');
+            await app.syncData();
+        } catch (err) {
+            console.error(err);
+            ui.showToast("Erro: " + err.message, "error");
+        } finally {
+            ui.toggleLoading(false);
+        }
+    },
+
+    // --- EDIT EXIT LOGIC ---
+    editExit: (id) => {
+        const exit = app.state.exits.find(e => String(e.ID) === String(id));
+        if (!exit) return;
+
+        document.getElementById('edit-exit-id').value = exit.ID;
+        document.getElementById('edit-exit-date').value = exit.DATA || '';
+        document.getElementById('edit-exit-qty').value = exit.QUANTIDADE || '';
+        document.getElementById('edit-exit-dest').value = exit.DESTINO || '';
+        document.getElementById('edit-exit-user').value = exit.USUARIO || '';
+        document.getElementById('edit-exit-obs').value = exit.OBSERVACAO || '';
+
+        // Populate Product Select
+        const prodSelect = document.getElementById('edit-exit-product-id');
+        prodSelect.innerHTML = '<option value="">Selecione...</option>';
+        app.state.products.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.ID;
+            opt.textContent = `${p.CODIGO || p.ID} - ${p.NOME}`;
+            prodSelect.appendChild(opt);
+        });
+        prodSelect.value = exit.PRODUTO_ID;
+
+        ui.showModal('modal-edit-exit');
+    },
+
+    saveExitEdit: async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-exit-id').value;
+        const date = document.getElementById('edit-exit-date').value;
+        const pid = document.getElementById('edit-exit-product-id').value;
+        const qty = document.getElementById('edit-exit-qty').value;
+        const dest = document.getElementById('edit-exit-dest').value;
+        const user = document.getElementById('edit-exit-user').value;
+        const obs = document.getElementById('edit-exit-obs').value;
+
+        ui.toggleLoading(true);
+        try {
+            const index = app.state.exits.findIndex(e => String(e.ID) === String(id));
+            if (index === -1) throw new Error("Saída não encontrada");
+            
+            const original = app.state.exits[index];
+            const rowNum = index + 2; // Header + 1-based index
+
+            // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, DESTINO, USUARIO, OBSERVACAO, CRIADO_EM
+            const rowData = [id, date, pid, qty, dest, user, obs, original.CRIADO_EM];
+            
+            await graph.updateRow('SAIDAS', rowNum, rowData);
+            ui.showToast("Saída atualizada!", "success");
+            ui.closeModal('modal-edit-exit');
+            await app.syncData();
+        } catch (err) {
+            console.error(err);
+            ui.showToast("Erro: " + err.message, "error");
         } finally {
             ui.toggleLoading(false);
         }
