@@ -666,14 +666,35 @@ const app = {
         const view = document.getElementById('view-audit');
         if (view) {
             view.classList.remove('hidden');
-            view.style.display = 'block'; // Force display block
+            view.style.display = 'block'; 
+            view.style.height = 'auto';
+            view.style.minHeight = '500px';
         }
 
-        const tbody = document.querySelector('#audit-table tbody');
-        if (!tbody) {
-            console.error("Tabela de auditoria não encontrada no DOM");
-            return;
+        // Fail-safe: Check if table exists, if not re-create it inside view
+        let table = document.getElementById('audit-table');
+        if (!table) {
+            console.warn("Table missing, rebuilding...");
+            view.innerHTML = `
+                <h3 class="text-xl font-bold mb-4 text-black dark:text-white">Histórico de Auditoria</h3>
+                <div class="w-full bg-white dark:bg-gray-800 rounded shadow" style="min-height: 300px; border: 1px solid #ddd;">
+                    <table id="audit-table" style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f3f4f6;">
+                            <tr>
+                                <th style="padding: 10px; text-align: left;">Data/Hora</th>
+                                <th style="padding: 10px; text-align: left;">Usuário</th>
+                                <th style="padding: 10px; text-align: left;">Ação</th>
+                                <th style="padding: 10px; text-align: left;">Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            `;
+            table = document.getElementById('audit-table');
         }
+
+        const tbody = table.querySelector('tbody');
         
         // Debug Raw Data
         console.log("RAW LOGS DATA:", app.state.logs);
@@ -706,15 +727,15 @@ const app = {
             } catch(e) { console.error("Date parse error", e); }
 
             return `
-                <tr style="background-color: white; border-bottom: 1px solid #ddd;">
-                    <td style="padding: 12px 24px; color: black !important; font-weight: bold;">${dateFormatted}</td>
-                    <td style="padding: 12px 24px; color: black !important;">${user}</td>
-                    <td style="padding: 12px 24px; color: black !important;">
-                        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">
+                <tr style="background-color: white; border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px; color: #000; font-weight: bold;">${dateFormatted}</td>
+                    <td style="padding: 12px; color: #000;">${user}</td>
+                    <td style="padding: 12px; color: #000;">
+                        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
                             ${action}
                         </span>
                     </td>
-                    <td style="padding: 12px 24px; color: black !important; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${details}">
+                    <td style="padding: 12px; color: #000; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${details}">
                         ${details}
                     </td>
                 </tr>
