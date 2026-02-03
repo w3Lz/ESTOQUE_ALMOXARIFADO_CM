@@ -696,16 +696,17 @@ const app = {
                 if (dateStr !== '-') dateFormatted = new Date(dateStr).toLocaleString('pt-BR');
             } catch(e) {}
 
+            // Force text colors to ensure visibility
             return `
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${dateFormatted}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${log.USUARIO || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">${dateFormatted}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black">${log.USUARIO || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                             ${log.ACAO || '-'}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title="${log.DETALHES || ''}">
+                    <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title="${log.DETALHES || ''}">
                         ${log.DETALHES || '-'}
                     </td>
                 </tr>
