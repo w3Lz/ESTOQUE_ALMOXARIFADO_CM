@@ -662,6 +662,13 @@ const app = {
     },
 
     renderAuditLogs: () => {
+        // Force remove hidden class just in case navigation didn't do it
+        const view = document.getElementById('view-audit');
+        if (view) {
+            view.classList.remove('hidden');
+            view.style.display = 'block'; // Force display block
+        }
+
         const tbody = document.querySelector('#audit-table tbody');
         if (!tbody) {
             console.error("Tabela de auditoria não encontrada no DOM");
@@ -672,17 +679,14 @@ const app = {
         console.log("RAW LOGS DATA:", app.state.logs);
 
         if (!app.state.logs || app.state.logs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum registro encontrado (Tente sincronizar novamente).</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: black;">Nenhum registro encontrado (Tente sincronizar novamente).</td></tr>`;
             return;
         }
         
         // Robust sort and render
         const sortedLogs = [...app.state.logs].sort((a,b) => {
-            // Handle both Object and Array format
-            // If Array: [ID, DATA_HORA, USUARIO, ACAO, DETALHES] -> Indices: 0, 1, 2, 3, 4
             const dateAVal = a.DATA_HORA || a[1] || '';
             const dateBVal = b.DATA_HORA || b[1] || '';
-            
             const dateA = dateAVal ? new Date(dateAVal) : new Date(0);
             const dateB = dateBVal ? new Date(dateBVal) : new Date(0);
             return dateB - dateA;
@@ -691,7 +695,6 @@ const app = {
         const displayLogs = sortedLogs.slice(0, 100);
 
         const html = displayLogs.map(log => {
-            // Determine fields based on structure (Object vs Array)
             const dateStr = log.DATA_HORA || log[1] || '-';
             const user = log.USUARIO || log[2] || '-';
             const action = log.ACAO || log[3] || '-';
@@ -701,9 +704,6 @@ const app = {
             try {
                 if (dateStr && dateStr !== '-') dateFormatted = new Date(dateStr).toLocaleString('pt-BR');
             } catch(e) { console.error("Date parse error", e); }
-
-            // Debug single row
-            console.log("Rendering Row:", {dateFormatted, user, action, details});
 
             return `
                 <tr style="background-color: white; border-bottom: 1px solid #ddd;">
@@ -723,7 +723,6 @@ const app = {
         
         console.log("Final HTML Length:", html.length);
         tbody.innerHTML = html;
-        // Force display
         tbody.style.display = 'table-row-group';
     },
 
