@@ -668,50 +668,59 @@ const app = {
             return;
         }
         
-        // Debug
-        console.log("Renderizando Logs. Total:", app.state.logs ? app.state.logs.length : 0);
+        // Debug Raw Data
+        console.log("RAW LOGS DATA:", app.state.logs);
 
         if (!app.state.logs || app.state.logs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum registro encontrado (Tente sincronizar novamente).</td></tr>`;
             return;
         }
         
-        // Sort by Date Descending
-        // Handle both object structure (from JSON/API) and array structure (from raw sheet read if not mapped yet)
-        // If readTable returns raw objects, app.state.logs should be objects.
-        
+        // Robust sort and render
         const sortedLogs = [...app.state.logs].sort((a,b) => {
-            const dateA = a.DATA_HORA ? new Date(a.DATA_HORA) : new Date(0);
-            const dateB = b.DATA_HORA ? new Date(b.DATA_HORA) : new Date(0);
+            // Handle both Object and Array format
+            // If Array: [ID, DATA_HORA, USUARIO, ACAO, DETALHES] -> Indices: 0, 1, 2, 3, 4
+            const dateAVal = a.DATA_HORA || a[1] || '';
+            const dateBVal = b.DATA_HORA || b[1] || '';
+            
+            const dateA = dateAVal ? new Date(dateAVal) : new Date(0);
+            const dateB = dateBVal ? new Date(dateBVal) : new Date(0);
             return dateB - dateA;
         });
         
-        // Limit to last 100 for performance
         const displayLogs = sortedLogs.slice(0, 100);
 
-        tbody.innerHTML = displayLogs.map(log => {
-            const dateStr = log.DATA_HORA || '-';
+        const html = displayLogs.map(log => {
+            // Determine fields based on structure (Object vs Array)
+            const dateStr = log.DATA_HORA || log[1] || '-';
+            const user = log.USUARIO || log[2] || '-';
+            const action = log.ACAO || log[3] || '-';
+            const details = log.DETALHES || log[4] || '-';
+
             let dateFormatted = dateStr;
             try {
-                if (dateStr !== '-') dateFormatted = new Date(dateStr).toLocaleString('pt-BR');
-            } catch(e) {}
+                if (dateStr && dateStr !== '-') dateFormatted = new Date(dateStr).toLocaleString('pt-BR');
+            } catch(e) { console.error("Date parse error", e); }
 
-            // Force text colors to ensure visibility
+            // Debug single row
+            console.log("Rendering Row:", {dateFormatted, user, action, details});
+
             return `
                 <tr class="bg-white border-b hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">${dateFormatted}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black">${log.USUARIO || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                            ${log.ACAO || '-'}
-                        </span>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black">${user}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">
+                        ${action}
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title="${log.DETALHES || ''}">
-                        ${log.DETALHES || '-'}
+                    <td class="px-6 py-4 text-sm text-black max-w-xs truncate" title="${details}">
+                        ${details}
                     </td>
                 </tr>
             `;
         }).join('');
+        
+        console.log("Final HTML Length:", html.length);
+        tbody.innerHTML = html;
     },
 
     // --- PRODUCT SEARCH MODAL LOGIC ---
