@@ -663,32 +663,50 @@ const app = {
 
     renderAuditLogs: () => {
         const tbody = document.querySelector('#audit-table tbody');
-        if (!tbody) return;
-        
-        // Sort by Date Descending
-        const sortedLogs = [...app.state.logs].sort((a,b) => new Date(b.DATA_HORA) - new Date(a.DATA_HORA));
-        
-        // Limit to last 100 for performance?
-        const displayLogs = sortedLogs.slice(0, 100);
-        
-        if (displayLogs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum registro encontrado.</td></tr>`;
+        if (!tbody) {
+            console.error("Tabela de auditoria não encontrada no DOM");
             return;
         }
+        
+        // Debug
+        console.log("Renderizando Logs. Total:", app.state.logs ? app.state.logs.length : 0);
+
+        if (!app.state.logs || app.state.logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum registro encontrado (Tente sincronizar novamente).</td></tr>`;
+            return;
+        }
+        
+        // Sort by Date Descending
+        // Handle both object structure (from JSON/API) and array structure (from raw sheet read if not mapped yet)
+        // If readTable returns raw objects, app.state.logs should be objects.
+        
+        const sortedLogs = [...app.state.logs].sort((a,b) => {
+            const dateA = a.DATA_HORA ? new Date(a.DATA_HORA) : new Date(0);
+            const dateB = b.DATA_HORA ? new Date(b.DATA_HORA) : new Date(0);
+            return dateB - dateA;
+        });
+        
+        // Limit to last 100 for performance
+        const displayLogs = sortedLogs.slice(0, 100);
 
         tbody.innerHTML = displayLogs.map(log => {
-            const date = new Date(log.DATA_HORA).toLocaleString('pt-BR');
+            const dateStr = log.DATA_HORA || '-';
+            let dateFormatted = dateStr;
+            try {
+                if (dateStr !== '-') dateFormatted = new Date(dateStr).toLocaleString('pt-BR');
+            } catch(e) {}
+
             return `
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${date}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${log.USUARIO}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${dateFormatted}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">${log.USUARIO || '-'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                            ${log.ACAO}
+                            ${log.ACAO || '-'}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title="${log.DETALHES}">
-                        ${log.DETALHES}
+                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title="${log.DETALHES || ''}">
+                        ${log.DETALHES || '-'}
                     </td>
                 </tr>
             `;
