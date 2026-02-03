@@ -706,13 +706,15 @@ const app = {
             console.log("Rendering Row:", {dateFormatted, user, action, details});
 
             return `
-                <tr class="bg-white border-b hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">${dateFormatted}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-black">${user}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">
-                        ${action}
+                <tr style="background-color: white; border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px 24px; color: black !important; font-weight: bold;">${dateFormatted}</td>
+                    <td style="padding: 12px 24px; color: black !important;">${user}</td>
+                    <td style="padding: 12px 24px; color: black !important;">
+                        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold;">
+                            ${action}
+                        </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-black max-w-xs truncate" title="${details}">
+                    <td style="padding: 12px 24px; color: black !important; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${details}">
                         ${details}
                     </td>
                 </tr>
@@ -721,6 +723,8 @@ const app = {
         
         console.log("Final HTML Length:", html.length);
         tbody.innerHTML = html;
+        // Force display
+        tbody.style.display = 'table-row-group';
     },
 
     // --- PRODUCT SEARCH MODAL LOGIC ---
