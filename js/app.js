@@ -1370,6 +1370,12 @@ const app = {
         const average = dataValues.length > 0 ? total / dataValues.length : 0;
         const averageData = new Array(dataValues.length).fill(average);
 
+        // Update Title with Average
+        const titleEl = document.getElementById('chart-frequency-title');
+        if (titleEl) {
+            titleEl.innerHTML = `Análise de Saída por Produto (Diário) <span class="text-sm font-normal text-gray-500 ml-2">Média: ${average.toFixed(2)}</span>`;
+        }
+
         // Format dates for display (DD/MM)
         const labels = displayDates.map(d => dateUtil.toBRShort(d));
 
@@ -1390,7 +1396,10 @@ const app = {
                         tension: 0.3,
                         pointRadius: 4,
                         pointHoverRadius: 6,
-                        order: 2
+                        order: 2,
+                        datalabels: {
+                            display: true // Show labels for main line
+                        }
                     },
                     {
                         label: `Média (${average.toFixed(1)})`,
@@ -1401,7 +1410,10 @@ const app = {
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 0,
-                        order: 1
+                        order: 1,
+                        datalabels: {
+                            display: false // Hide labels for average line
+                        }
                     }
                 ]
             },
