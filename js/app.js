@@ -308,10 +308,7 @@ const app = {
         if (app.state.products && app.state.products.length > 0) {
             app.state.products.forEach(p => {
                 if (p.UNIDADE) addUnique(units, p.UNIDADE);
-                // Only add Type if it is fully uppercase (User requirement)
-                if (p.TIPO && p.TIPO === p.TIPO.toUpperCase()) {
-                    types.add(p.TIPO);
-                }
+                if (p.TIPO) addUnique(types, p.TIPO);
             });
         }
 
