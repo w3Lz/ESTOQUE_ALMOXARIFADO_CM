@@ -94,7 +94,8 @@ const app = {
         activeSearchForm: null, // 'entry' or 'exit'
         pagination: {
             entries: { page: 1, limit: 10 },
-            exits: { page: 1, limit: 10 }
+            exits: { page: 1, limit: 10 },
+            products: { page: 1, limit: 10 }
         }
     },
     
@@ -585,6 +586,7 @@ const app = {
         app.state.pagination[type].page += delta;
         if (type === 'entries') app.renderEntriesTable();
         if (type === 'exits') app.renderExitsTable();
+        if (type === 'products') app.filterProducts();
     },
 
     updatePaginationControls: (type, page, totalPages, totalItems) => {
@@ -692,9 +694,27 @@ const app = {
         // Update count
         document.getElementById('product-count').textContent = `${filtered.length} itens`;
 
+        // Pagination Logic
+        const page = app.state.pagination.products.page;
+        const limit = app.state.pagination.products.limit;
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / limit);
+
+        // Adjust page if out of bounds (e.g. after search reduces results)
+        if (page > totalPages && totalPages > 0) app.state.pagination.products.page = totalPages;
+        if (page < 1) app.state.pagination.products.page = 1;
+        
+        // If search changed total results significantly, reset to page 1? 
+        // For now let's rely on the check above. But usually searching resets to page 1.
+        // We can check if we need to reset in the input handler, but let's keep it simple.
+        
+        const currentPage = app.state.pagination.products.page;
+        const start = (currentPage - 1) * limit;
+        const paged = filtered.slice(start, start + limit);
+
         // Render Table with Row Number
         const prodCols = [
-            { field: 'rowNum', render: (row, index) => index + 1 }, // Dynamic Row Number
+            { field: 'rowNum', render: (row, index) => start + index + 1 }, // Dynamic Row Number corrected for pagination
             { field: 'CODIGO' },
             { field: 'NOME' },
             { field: 'UNIDADE' },
@@ -717,7 +737,8 @@ const app = {
                 </div>
             `; }}
         ];
-        ui.renderTable('products-table', filtered, prodCols);
+        ui.renderTable('products-table', paged, prodCols);
+        app.updatePaginationControls('products', currentPage, totalPages, total);
     },
 
     // --- EXPORT FUNCTIONS ---
