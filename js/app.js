@@ -306,7 +306,6 @@ const app = {
             return item;
         });
         
-        document.getElementById('total-items').textContent = app.state.products.length;
         
         // Count statuses for cards
         const comprarCount = app.state.balance.filter(i => i.status === 'COMPRAR').length;
@@ -319,18 +318,16 @@ const app = {
         const zeradoEl = document.getElementById('zerado-count');
         if (zeradoEl) zeradoEl.textContent = zeradoCount;
 
-        // Keep low-stock-count for backward compatibility or sum?
-        // User asked to replace. We will update HTML next.
-        // If element exists, maybe show sum? Or just ignore if removed.
-        const lowStockEl = document.getElementById('low-stock-count');
-        if (lowStockEl) lowStockEl.textContent = comprarCount + zeradoCount; // Fallback
-
         // Calculate Inactive Count
         let inactiveCount = 0;
         app.state.products.forEach(p => {
             if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') inactiveCount++;
         });
-        document.getElementById('inactive-count').textContent = inactiveCount;
+        const inactiveEl = document.getElementById('inactive-count');
+        if (inactiveEl) inactiveEl.textContent = inactiveCount;
+
+        const totalEl = document.getElementById('total-items');
+        if (totalEl) totalEl.textContent = app.state.products.length;
     },
 
     openComprarModal: () => {
@@ -1340,10 +1337,9 @@ const app = {
             app.updateSortIcons(column, direction);
         }
 
-        // Update Stats Cards
-        document.getElementById('total-items').textContent = filtered.length;
-        const lowStock = filtered.filter(i => i.status === 'ESTOQUE BAIXO').length;
-        document.getElementById('low-stock-count').textContent = lowStock;
+        // Calculate Balance already updates Global Counters.
+        // We do NOT update cards here to avoid confusion (Table is filtered, Cards are Global KPIs).
+        // If we want filtered KPIs, we should create separate logic, but for now let's keep it safe.
 
         const dashboardCols = [
             { field: 'code' },
