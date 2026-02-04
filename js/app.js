@@ -1365,22 +1365,45 @@ const app = {
         }
 
         const dataValues = displayDates.map(d => dateMap[d]);
+        // Calculate Average
+        const total = dataValues.reduce((sum, val) => sum + val, 0);
+        const average = dataValues.length > 0 ? total / dataValues.length : 0;
+        const averageData = new Array(dataValues.length).fill(average);
+
         // Format dates for display (DD/MM)
         const labels = displayDates.map(d => dateUtil.toBRShort(d));
 
         const productName = app.state.products.find(p => String(p.ID) === String(pid))?.NOME || 'Produto';
 
         app.state.charts.freq = new Chart(ctxFreq, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: `Quantidade Saída - ${productName}`,
-                    data: dataValues,
-                    backgroundColor: '#FFD100', // Accent Color
-                    borderColor: '#e6bc00',
-                    borderWidth: 1
-                }]
+                datasets: [
+                    {
+                        label: `Quantidade Saída - ${productName}`,
+                        data: dataValues,
+                        backgroundColor: 'rgba(255, 209, 0, 0.2)',
+                        borderColor: '#FFD100',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        order: 2
+                    },
+                    {
+                        label: `Média (${average.toFixed(1)})`,
+                        data: averageData,
+                        borderColor: '#9ca3af', // Gray 400
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        order: 1
+                    }
+                ]
             },
             options: {
                 responsive: true,
