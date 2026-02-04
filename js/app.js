@@ -1373,7 +1373,7 @@ const app = {
         // Update Title with Average
         const titleEl = document.getElementById('chart-frequency-title');
         if (titleEl) {
-            titleEl.innerHTML = `Análise de Saída por Produto (Diário) <span class="text-sm font-normal text-gray-500 ml-2">Média: ${average.toFixed(2)}</span>`;
+            titleEl.innerHTML = `Análise de Saída por Produto (Diário) <span class="text-sm font-normal text-gray-500 ml-2">Média: ${Math.round(average)}</span>`;
         }
 
         // Format dates for display (DD/MM) with Day of Week
@@ -1413,7 +1413,7 @@ const app = {
                         }
                     },
                     {
-                        label: `Média (${average.toFixed(1)})`,
+                        label: `Média (${Math.round(average)})`,
                         data: averageData,
                         borderColor: '#9ca3af', // Gray 400
                         borderWidth: 2,
