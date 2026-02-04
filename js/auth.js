@@ -19,9 +19,9 @@ const auth = {
     },
 
     init: async () => {
-        console.log("Aguardando bibliotecas do Google...");
+        // console.log("Aguardando bibliotecas do Google...");
         await auth.waitForLibraries();
-        console.log("Bibliotecas carregadas. Inicializando GAPI...");
+        // console.log("Bibliotecas carregadas. Inicializando GAPI...");
         
         gapi.load('client', auth.initializeGapiClient);
         auth.initializeGisClient();
@@ -35,7 +35,7 @@ const auth = {
         auth.gapiInited = true;
         
         // After GAPI init (with API Key), we can try to read public data immediately
-        console.log("GAPI inicializado. Tentando ler dados...");
+        // console.log("GAPI inicializado. Tentando ler dados...");
         app.initData();
         
         // Auth check moved to initializeGisClient to ensure tokenClient is ready
@@ -135,18 +135,18 @@ const auth = {
         if (storedToken && expirationTime) {
             const now = Date.now();
             if (now < parseInt(expirationTime)) {
-                console.log("Token recuperado do cache.");
+                // console.log("Token recuperado do cache.");
                 // Ensure gapi client is ready
                 if (gapi.client) {
                     const tokenObj = JSON.parse(storedToken);
                     gapi.client.setToken(tokenObj);
                     auth.getUserProfile();
                 } else {
-                    console.warn("GAPI Client not ready for token restoration. Retrying in 1s...");
+                    // console.warn("GAPI Client not ready for token restoration. Retrying in 1s...");
                     setTimeout(auth.checkAuth, 1000);
                 }
             } else {
-                console.log("Token expirado. Tentando renovação silenciosa...");
+                // console.log("Token expirado. Tentando renovação silenciosa...");
                 if (auth.tokenClient) {
                     auth.tokenClient.requestAccessToken({prompt: 'none'});
                 }

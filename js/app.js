@@ -967,7 +967,7 @@ const app = {
         const tbody = table.querySelector('tbody');
         
         // Debug Raw Data
-        console.log("RAW LOGS DATA:", app.state.logs);
+        // console.log("RAW LOGS DATA:", app.state.logs);
 
         if (!app.state.logs || app.state.logs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: black;">Nenhum registro encontrado (Tente sincronizar novamente).</td></tr>`;
@@ -1012,7 +1012,7 @@ const app = {
             `;
         }).join('');
         
-        console.log("Final HTML Length:", html.length);
+        // console.log("Final HTML Length:", html.length);
         tbody.innerHTML = html;
         tbody.style.display = 'table-row-group';
     },
