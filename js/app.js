@@ -289,15 +289,41 @@ const app = {
         });
 
         app.state.balance = Object.values(balanceMap).map(item => {
-            if (item.qty <= item.min) {
-                item.status = 'ESTOQUE BAIXO';
+            const isActive = app.state.products.find(p => String(p.ID) === String(item.id))?.ATIVO;
+            
+            // Check Inactive
+            if (isActive && String(isActive).toUpperCase() === 'NÃO') {
+                item.status = 'INATIVO';
+            } else if (item.qty <= 0) {
+                // Zero or negative stock
+                item.status = 'SEM ESTOQUE';
+            } else if (item.qty <= item.min) {
+                // Low stock (positive but <= min)
+                item.status = 'COMPRAR';
+            } else {
+                item.status = 'OK';
             }
             return item;
         });
         
         document.getElementById('total-items').textContent = app.state.products.length;
-        const lowStock = app.state.balance.filter(i => i.status === 'ESTOQUE BAIXO').length;
-        document.getElementById('low-stock-count').textContent = lowStock;
+        
+        // Count statuses for cards
+        const comprarCount = app.state.balance.filter(i => i.status === 'COMPRAR').length;
+        const zeradoCount = app.state.balance.filter(i => i.status === 'SEM ESTOQUE').length;
+        
+        // Update new card counters (if they exist in HTML)
+        const comprarEl = document.getElementById('comprar-count');
+        if (comprarEl) comprarEl.textContent = comprarCount;
+        
+        const zeradoEl = document.getElementById('zerado-count');
+        if (zeradoEl) zeradoEl.textContent = zeradoCount;
+
+        // Keep low-stock-count for backward compatibility or sum?
+        // User asked to replace. We will update HTML next.
+        // If element exists, maybe show sum? Or just ignore if removed.
+        const lowStockEl = document.getElementById('low-stock-count');
+        if (lowStockEl) lowStockEl.textContent = comprarCount + zeradoCount; // Fallback
 
         // Calculate Inactive Count
         let inactiveCount = 0;
@@ -305,6 +331,84 @@ const app = {
             if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') inactiveCount++;
         });
         document.getElementById('inactive-count').textContent = inactiveCount;
+    },
+
+    openComprarModal: () => {
+        document.getElementById('modal-comprar-search').value = '';
+        app.filterComprarModal();
+        ui.showModal('modal-comprar-list');
+        setTimeout(() => document.getElementById('modal-comprar-search').focus(), 100);
+    },
+
+    filterComprarModal: () => {
+        const query = document.getElementById('modal-comprar-search').value.toLowerCase();
+        const resultsBody = document.getElementById('modal-comprar-results');
+        resultsBody.innerHTML = '';
+
+        const items = app.state.balance.filter(i => i.status === 'COMPRAR' && (
+            (i.name && i.name.toLowerCase().includes(query)) || 
+            (i.code && i.code.toString().toLowerCase().includes(query))
+        ));
+
+        if (items.length === 0) {
+            resultsBody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum item encontrado</td></tr>`;
+            return;
+        }
+
+        items.forEach(i => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${i.code || '-'}</td>
+                <td class="px-4 py-3">${i.name}</td>
+                <td class="px-4 py-3">${Math.floor(i.qty)} ${i.unit}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-xs font-bold text-yellow-700 dark:text-yellow-400">
+                        Min: ${i.min}
+                    </span>
+                </td>
+            `;
+            resultsBody.appendChild(tr);
+        });
+    },
+
+    openZeradoModal: () => {
+        document.getElementById('modal-zerado-search').value = '';
+        app.filterZeradoModal();
+        ui.showModal('modal-zerado-list');
+        setTimeout(() => document.getElementById('modal-zerado-search').focus(), 100);
+    },
+
+    filterZeradoModal: () => {
+        const query = document.getElementById('modal-zerado-search').value.toLowerCase();
+        const resultsBody = document.getElementById('modal-zerado-results');
+        resultsBody.innerHTML = '';
+
+        const items = app.state.balance.filter(i => i.status === 'SEM ESTOQUE' && (
+            (i.name && i.name.toLowerCase().includes(query)) || 
+            (i.code && i.code.toString().toLowerCase().includes(query))
+        ));
+
+        if (items.length === 0) {
+            resultsBody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum item encontrado</td></tr>`;
+            return;
+        }
+
+        items.forEach(i => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${i.code || '-'}</td>
+                <td class="px-4 py-3">${i.name}</td>
+                <td class="px-4 py-3 text-red-600 font-bold">0 ${i.unit}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">
+                        Esgotado
+                    </span>
+                </td>
+            `;
+            resultsBody.appendChild(tr);
+        });
     },
 
     openInactiveModal: () => {
@@ -1250,13 +1354,38 @@ const app = {
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
                     return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
+                } else if (row.status === 'COMPRAR') {
+                    return `<span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-xs font-bold text-yellow-700 dark:text-yellow-400">COMPRAR</span>`;
+                } else if (row.status === 'SEM ESTOQUE') {
+                    return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">SEM ESTOQUE</span>`;
+                } else if (row.status === 'INATIVO') {
+                    return `<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-bold text-gray-500 dark:text-gray-400">INATIVO</span>`;
                 } else {
-                    return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
+                    return `<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-bold text-gray-500 dark:text-gray-400">${row.status}</span>`;
                 }
             }}
         ];
 
         ui.renderTable('dashboard-table', filtered, dashboardCols);
+        
+        // Apply row colors after render
+        const table = document.getElementById('dashboard-table');
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            const item = filtered[index];
+            if (!item) return;
+            
+            // Reset classes
+            row.classList.remove('bg-yellow-50', 'dark:bg-yellow-900/10', 'bg-red-50', 'dark:bg-red-900/10', 'bg-gray-50', 'dark:bg-gray-800/50');
+            
+            if (item.status === 'COMPRAR') {
+                row.classList.add('bg-yellow-50', 'dark:bg-yellow-900/10');
+            } else if (item.status === 'SEM ESTOQUE') {
+                row.classList.add('bg-red-50', 'dark:bg-red-900/10');
+            } else if (item.status === 'INATIVO') {
+                row.classList.add('bg-gray-50', 'dark:bg-gray-800/50', 'opacity-60');
+            }
+        });
     },
 
     showLowStock: () => {
