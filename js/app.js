@@ -624,7 +624,7 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: r => Math.floor(r.qty) }, // Show as Integer
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
                     return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
@@ -1346,7 +1346,7 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: r => Math.floor(r.qty) }, // Show as Integer
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
                     return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
@@ -1401,7 +1401,7 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: r => Math.floor(r.qty) }, // Show as Integer
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
             { field: 'status', render: (row) => {
                 return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
             }}
