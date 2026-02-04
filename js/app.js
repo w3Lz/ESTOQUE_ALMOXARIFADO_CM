@@ -93,6 +93,7 @@ const app = {
         },
         activeSearchForm: null, // 'entry' or 'exit'
         dashboardTypeFilter: null,
+        showInactive: localStorage.getItem('showInactive') === 'true', // Load state
         pagination: {
             entries: { page: 1, limit: 10 },
             exits: { page: 1, limit: 10 },
@@ -447,6 +448,9 @@ const app = {
     },
 
     updateUI: () => {
+        // Init Show Inactive Button State
+        app.updateShowInactiveButton();
+
         // Dashboard
         const dashboardCols = [
             { field: 'code' },
@@ -1081,11 +1085,42 @@ const app = {
         app.filterDashboard();
     },
 
+    toggleShowInactive: () => {
+        app.state.showInactive = !app.state.showInactive;
+        localStorage.setItem('showInactive', app.state.showInactive);
+        app.updateShowInactiveButton();
+        app.filterDashboard();
+    },
+
+    updateShowInactiveButton: () => {
+        const btn = document.getElementById('btn-show-inactive');
+        if (!btn) return;
+        
+        if (app.state.showInactive) {
+            btn.classList.remove('bg-gray-100', 'text-gray-600', 'dark:bg-gray-700', 'dark:text-gray-300');
+            btn.classList.add('bg-red-100', 'text-red-700', 'border-red-200', 'dark:bg-red-900/30', 'dark:text-red-400');
+            btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">visibility</span> Inativos: ON`;
+        } else {
+            btn.classList.remove('bg-red-100', 'text-red-700', 'border-red-200', 'dark:bg-red-900/30', 'dark:text-red-400');
+            btn.classList.add('bg-gray-100', 'text-gray-600', 'dark:bg-gray-700', 'dark:text-gray-300');
+            btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">visibility_off</span> Inativos: OFF`;
+        }
+    },
+
     filterDashboard: () => {
         const searchText = document.getElementById('dashboard-search').value.toLowerCase();
         const typeFilter = app.state.dashboardTypeFilter;
+        const showInactive = app.state.showInactive;
         
         let filtered = app.state.balance;
+
+        // Inactive Filter (Default: Hide inactive)
+        if (!showInactive) {
+            filtered = filtered.filter(item => {
+                const prod = app.state.products.find(p => String(p.ID) === String(item.id));
+                return !prod || !prod.ATIVO || String(prod.ATIVO).toUpperCase() !== 'NÃO';
+            });
+        }
 
         if (searchText) {
             filtered = filtered.filter(item => 

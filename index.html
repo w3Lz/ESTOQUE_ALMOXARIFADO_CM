@@ -186,6 +186,9 @@
                                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                                     <h3 class="text-[#101418] dark:text-white text-xl font-bold leading-tight">Saldo Atual</h3>
                                     <div class="flex gap-2">
+                                        <button id="btn-show-inactive" onclick="app.toggleShowInactive()" class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-sm font-medium transition-colors border border-transparent">
+                                            <span class="material-symbols-outlined text-[18px]">visibility_off</span> Inativos: OFF
+                                        </button>
                                         <button onclick="app.exportToExcel('dashboard-table', 'Estoque_Saldo')" class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-3 rounded-lg transition-colors">
                                             <span class="material-symbols-outlined text-[18px]">table_view</span> Excel
                                         </button>
