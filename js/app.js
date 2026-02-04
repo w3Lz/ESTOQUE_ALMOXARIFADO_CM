@@ -288,6 +288,17 @@ const app = {
     },
 
     updateDatalists: () => {
+        // Helper to add ignoring case duplicates (Prefer existing/Capitalized)
+        const addUnique = (set, val) => {
+            if (!val) return;
+            const upper = val.toUpperCase();
+            let exists = false;
+            for (let item of set) {
+                if (item.toUpperCase() === upper) return;
+            }
+            set.add(val);
+        };
+
         // Collect unique values - Start with defaults
         const units = new Set(['UN', 'KG', 'MT', 'CX', 'L', 'PCT']);
         const types = new Set(['Material', 'EPI', 'Ferramenta', 'Comida']);
@@ -296,14 +307,14 @@ const app = {
         // Add existing from products
         if (app.state.products && app.state.products.length > 0) {
             app.state.products.forEach(p => {
-                if (p.UNIDADE) units.add(p.UNIDADE);
-                if (p.TIPO) types.add(p.TIPO);
+                if (p.UNIDADE) addUnique(units, p.UNIDADE);
+                if (p.TIPO) addUnique(types, p.TIPO);
             });
         }
 
         // Add existing from entries and exits
-        if (app.state.entries) app.state.entries.forEach(e => { if(e.USUARIO) users.add(e.USUARIO); });
-        if (app.state.exits) app.state.exits.forEach(e => { if(e.USUARIO) users.add(e.USUARIO); });
+        if (app.state.entries) app.state.entries.forEach(e => { if(e.USUARIO) addUnique(users, e.USUARIO); });
+        if (app.state.exits) app.state.exits.forEach(e => { if(e.USUARIO) addUnique(users, e.USUARIO); });
 
         // Populate Selects
         const populate = (id, set) => {
