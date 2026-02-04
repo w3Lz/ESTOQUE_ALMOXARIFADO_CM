@@ -1,3 +1,78 @@
+const dateUtil = {
+    pad2: (n) => String(n).padStart(2, '0'),
+    parse: (value) => {
+        if (!value) return null;
+        if (value instanceof Date && !isNaN(value.getTime())) {
+            return { y: value.getFullYear(), m: value.getMonth() + 1, d: value.getDate() };
+        }
+
+        const raw = String(value).trim();
+        if (!raw) return null;
+
+        const isValid = (y, m, d) => {
+            if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
+            if (y < 1900 || y > 2200) return false;
+            if (m < 1 || m > 12) return false;
+            const maxDay = new Date(y, m, 0).getDate();
+            return d >= 1 && d <= maxDay;
+        };
+
+        const isoDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoDateMatch) {
+            const y = parseInt(isoDateMatch[1], 10);
+            const m = parseInt(isoDateMatch[2], 10);
+            const d = parseInt(isoDateMatch[3], 10);
+            if (isValid(y, m, d)) return { y, m, d };
+        }
+
+        const brDateMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (brDateMatch) {
+            const d = parseInt(brDateMatch[1], 10);
+            const m = parseInt(brDateMatch[2], 10);
+            const y = parseInt(brDateMatch[3], 10);
+            if (isValid(y, m, d)) return { y, m, d };
+        }
+
+        const ymdSlashMatch = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+        if (ymdSlashMatch) {
+            const y = parseInt(ymdSlashMatch[1], 10);
+            const m = parseInt(ymdSlashMatch[2], 10);
+            const d = parseInt(ymdSlashMatch[3], 10);
+            if (isValid(y, m, d)) return { y, m, d };
+        }
+
+        return null;
+    },
+    toISO: (value) => {
+        const p = dateUtil.parse(value);
+        if (!p) return '';
+        return `${p.y}-${dateUtil.pad2(p.m)}-${dateUtil.pad2(p.d)}`;
+    },
+    toBR: (value) => {
+        const p = dateUtil.parse(value);
+        if (!p) return '';
+        return `${dateUtil.pad2(p.d)}/${dateUtil.pad2(p.m)}/${p.y}`;
+    },
+    toBRShort: (value) => {
+        const p = dateUtil.parse(value);
+        if (!p) return '';
+        return `${dateUtil.pad2(p.d)}/${dateUtil.pad2(p.m)}`;
+    },
+    getYear: (value) => {
+        const p = dateUtil.parse(value);
+        return p ? p.y : null;
+    },
+    getMonthIndex: (value) => {
+        const p = dateUtil.parse(value);
+        return p ? p.m - 1 : null;
+    },
+    valueKey: (value) => {
+        const p = dateUtil.parse(value);
+        if (!p) return null;
+        return p.y * 10000 + p.m * 100 + p.d;
+    }
+};
+
 const app = {
     state: {
         products: [],
@@ -301,8 +376,8 @@ const app = {
             if (dataList) {
                 dataList.forEach(e => {
                     if (e.DATA) {
-                        const y = parseInt(e.DATA.split('-')[0]);
-                        if (!isNaN(y)) years.add(y);
+                        const y = dateUtil.getYear(e.DATA);
+                        if (y) years.add(y);
                     }
                 });
             }
@@ -1150,14 +1225,10 @@ const app = {
 
         const processHistory = (list, targetArray) => {
             list.forEach(item => {
-                // Fix for date parsing: manually parse YYYY-MM-DD to avoid timezone issues or use simple substring
                 if (!item.DATA) return;
-                const parts = item.DATA.split('-');
-                if (parts.length !== 3) return;
-                
-                const year = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1; // 0-based
-                // const day = parseInt(parts[2]);
+                const year = dateUtil.getYear(item.DATA);
+                const month = dateUtil.getMonthIndex(item.DATA);
+                if (year === null || month === null) return;
                 
                 // Calculate difference in months from today
                 // Logic: (YearDiff * 12) + (MonthDiff)
@@ -1267,8 +1338,8 @@ const app = {
         const dateMap = {};
         productExits.forEach(e => {
             if (!e.DATA) return;
-            // Standardize date format YYYY-MM-DD
-            const date = e.DATA; 
+            const date = dateUtil.toISO(e.DATA);
+            if (!date) return;
             const qty = parseFloat(e.QUANTIDADE) || 0;
             
             if (!dateMap[date]) {
@@ -1278,7 +1349,7 @@ const app = {
         });
 
         // Sort Dates
-        const sortedDates = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
+        const sortedDates = Object.keys(dateMap).sort((a, b) => (dateUtil.valueKey(a) || 0) - (dateUtil.valueKey(b) || 0));
         
         // If too many dates, maybe take last 30?
         // Let's take all for now, but if > 50, slice last 50
@@ -1289,10 +1360,7 @@ const app = {
 
         const dataValues = displayDates.map(d => dateMap[d]);
         // Format dates for display (DD/MM)
-        const labels = displayDates.map(d => {
-            const parts = d.split('-');
-            return `${parts[2]}/${parts[1]}`;
-        });
+        const labels = displayDates.map(d => dateUtil.toBRShort(d));
 
         const productName = app.state.products.find(p => String(p.ID) === String(pid))?.NOME || 'Produto';
 
@@ -1319,8 +1387,7 @@ const app = {
                                 // Find full date from original sorted array using index
                                 const index = context[0].dataIndex;
                                 const originalDate = displayDates[index];
-                                const parts = originalDate.split('-');
-                                return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+                                return dateUtil.toBR(originalDate);
                             }
                         }
                     },
@@ -1363,11 +1430,9 @@ const app = {
 
         app.state.exits.forEach(e => {
             if (!e.DATA) return;
-            const parts = e.DATA.split('-');
-            if (parts.length !== 3) return;
-            
-            const y = parseInt(parts[0]);
-            const m = parseInt(parts[1]) - 1; // 0-based
+            const y = dateUtil.getYear(e.DATA);
+            const m = dateUtil.getMonthIndex(e.DATA);
+            if (y === null || m === null) return;
             
             if (y === year && m >= 0 && m < 12) {
                 // Find Product Type
@@ -1457,11 +1522,9 @@ const app = {
 
         app.state.entries.forEach(e => {
             if (!e.DATA) return;
-            const parts = e.DATA.split('-');
-            if (parts.length !== 3) return;
-            
-            const y = parseInt(parts[0]);
-            const m = parseInt(parts[1]) - 1; // 0-based
+            const y = dateUtil.getYear(e.DATA);
+            const m = dateUtil.getMonthIndex(e.DATA);
+            if (y === null || m === null) return;
             
             if (y === year && m >= 0 && m < 12) {
                 // Find Product Type
@@ -1553,7 +1616,7 @@ const app = {
         const now = new Date().toISOString();
         
         // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, ORIGEM, USUARIO, OBSERVACAO, CRIADO_EM
-        const row = [newId, date, pid, qty, origin, user, obs, now];
+        const row = [newId, dateUtil.toBR(date), pid, qty, origin, user, obs, now];
         
         ui.toggleLoading(true);
         try {
@@ -1600,7 +1663,7 @@ const app = {
         const now = new Date().toISOString();
         
         // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, DESTINO, USUARIO, OBSERVACAO, CRIADO_EM
-        const row = [newId, date, pid, qty, dest, user, obs, now];
+        const row = [newId, dateUtil.toBR(date), pid, qty, dest, user, obs, now];
         
         ui.toggleLoading(true);
         try {
@@ -1624,7 +1687,7 @@ const app = {
         if (!entry) return;
 
         document.getElementById('edit-entry-id').value = entry.ID;
-        document.getElementById('edit-entry-date').value = entry.DATA || '';
+        document.getElementById('edit-entry-date').value = dateUtil.toISO(entry.DATA) || '';
         document.getElementById('edit-entry-qty').value = entry.QUANTIDADE || '';
         document.getElementById('edit-entry-origin').value = entry.ORIGEM || '';
         document.getElementById('edit-entry-user').value = entry.USUARIO || '';
@@ -1663,7 +1726,7 @@ const app = {
             const rowNum = index + 2; // Header + 1-based index
 
             // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, ORIGEM, USUARIO, OBSERVACAO, CRIADO_EM
-            const rowData = [id, date, pid, qty, origin, user, obs, original.CRIADO_EM];
+            const rowData = [id, dateUtil.toBR(date), pid, qty, origin, user, obs, original.CRIADO_EM];
             
             await graph.updateRow('ENTRADAS', rowNum, rowData);
             ui.showToast("Entrada atualizada!", "success");
@@ -1686,7 +1749,7 @@ const app = {
         if (!exit) return;
 
         document.getElementById('edit-exit-id').value = exit.ID;
-        document.getElementById('edit-exit-date').value = exit.DATA || '';
+        document.getElementById('edit-exit-date').value = dateUtil.toISO(exit.DATA) || '';
         document.getElementById('edit-exit-qty').value = exit.QUANTIDADE || '';
         document.getElementById('edit-exit-dest').value = exit.DESTINO || '';
         document.getElementById('edit-exit-user').value = exit.USUARIO || '';
@@ -1725,7 +1788,7 @@ const app = {
             const rowNum = index + 2; // Header + 1-based index
 
             // Columns: ID, DATA, PRODUTO_ID, QUANTIDADE, DESTINO, USUARIO, OBSERVACAO, CRIADO_EM
-            const rowData = [id, date, pid, qty, dest, user, obs, original.CRIADO_EM];
+            const rowData = [id, dateUtil.toBR(date), pid, qty, dest, user, obs, original.CRIADO_EM];
             
             await graph.updateRow('SAIDAS', rowNum, rowData);
             ui.showToast("Saída atualizada!", "success");
