@@ -91,7 +91,11 @@ const app = {
             column: null,
             direction: 'asc' // or 'desc'
         },
-        activeSearchForm: null // 'entry' or 'exit'
+        activeSearchForm: null, // 'entry' or 'exit'
+        pagination: {
+            entries: { page: 1, limit: 10 },
+            exits: { page: 1, limit: 10 }
+        }
     },
     
     config: {
@@ -470,11 +474,39 @@ const app = {
         // Update Datalists
         app.updateDatalists();
 
-        // History
+        // Render Tables with Pagination
+        app.renderEntriesTable();
+        app.renderExitsTable();
+    },
+
+    renderEntriesTable: () => {
+        const page = app.state.pagination.entries.page;
+        const limit = app.state.pagination.entries.limit;
+
+        // Sort by DATA (desc), then ID (desc)
+        const sorted = [...app.state.entries].sort((a, b) => {
+             const dateA = dateUtil.parse(a.DATA);
+             const dateB = dateUtil.parse(b.DATA);
+             const timeA = dateA ? new Date(dateA.y, dateA.m-1, dateA.d).getTime() : 0;
+             const timeB = dateB ? new Date(dateB.y, dateB.m-1, dateB.d).getTime() : 0;
+             return timeB - timeA || (parseInt(b.ID) - parseInt(a.ID));
+        });
+
+        const total = sorted.length;
+        const totalPages = Math.ceil(total / limit);
+
+        // Adjust page
+        if (app.state.pagination.entries.page > totalPages && totalPages > 0) app.state.pagination.entries.page = totalPages;
+        if (app.state.pagination.entries.page < 1) app.state.pagination.entries.page = 1;
+        
+        const currentPage = app.state.pagination.entries.page;
+        const start = (currentPage - 1) * limit;
+        const paged = sorted.slice(start, start + limit);
+
         const histCols = [
             { field: 'DATA', render: r => {
                 if (!r.DATA) return '-';
-                return r.DATA; // Keep original date format for now
+                return r.DATA; 
             }},
             { field: 'PRODUTO_ID', render: r => {
                 const p = app.state.products.find(p => String(p.ID) === String(r.PRODUTO_ID));
@@ -484,8 +516,7 @@ const app = {
             { field: 'ORIGEM', render: r => r.ORIGEM || r.DESTINO || '-' },
             { field: 'USUARIO' }
         ];
-        
-        // Entradas: ORIGEM
+
         const entryCols = [...histCols];
         entryCols.push({ field: 'actions', render: (row) => `
             <div class="flex items-center justify-center">
@@ -494,10 +525,50 @@ const app = {
                 </button>
             </div>
         `});
-        
-        // Saidas: DESTINO
+
+        ui.renderTable('entries-table', paged, entryCols);
+        app.updatePaginationControls('entries', currentPage, totalPages, total);
+    },
+
+    renderExitsTable: () => {
+        const page = app.state.pagination.exits.page;
+        const limit = app.state.pagination.exits.limit;
+
+        // Sort by DATA (desc), then ID (desc)
+        const sorted = [...app.state.exits].sort((a, b) => {
+             const dateA = dateUtil.parse(a.DATA);
+             const dateB = dateUtil.parse(b.DATA);
+             const timeA = dateA ? new Date(dateA.y, dateA.m-1, dateA.d).getTime() : 0;
+             const timeB = dateB ? new Date(dateB.y, dateB.m-1, dateB.d).getTime() : 0;
+             return timeB - timeA || (parseInt(b.ID) - parseInt(a.ID));
+        });
+
+        const total = sorted.length;
+        const totalPages = Math.ceil(total / limit);
+
+        // Adjust page
+        if (app.state.pagination.exits.page > totalPages && totalPages > 0) app.state.pagination.exits.page = totalPages;
+        if (app.state.pagination.exits.page < 1) app.state.pagination.exits.page = 1;
+
+        const currentPage = app.state.pagination.exits.page;
+        const start = (currentPage - 1) * limit;
+        const paged = sorted.slice(start, start + limit);
+
+        const histCols = [
+            { field: 'DATA', render: r => {
+                if (!r.DATA) return '-';
+                return r.DATA; 
+            }},
+            { field: 'PRODUTO_ID', render: r => {
+                const p = app.state.products.find(p => String(p.ID) === String(r.PRODUTO_ID));
+                return p ? p.NOME : r.PRODUTO_ID;
+            }},
+            { field: 'QUANTIDADE', render: r => `<span class="font-bold">${r.QUANTIDADE}</span>` },
+            { field: 'DESTINO', render: r => r.DESTINO || '-' },
+            { field: 'USUARIO' }
+        ];
+
         const exitCols = [...histCols];
-        exitCols[3] = { field: 'DESTINO', render: r => r.DESTINO || '-' };
         exitCols.push({ field: 'actions', render: (row) => `
             <div class="flex items-center justify-center">
                 <button class="flex items-center justify-center size-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-orange-600 dark:text-orange-400 transition-colors" onclick="app.editExit('${row.ID}')">
@@ -506,11 +577,33 @@ const app = {
             </div>
         `});
 
-        const sortedEntries = [...app.state.entries].sort((a,b) => new Date(b.CRIADO_EM) - new Date(a.CRIADO_EM)).slice(0, 5);
-        const sortedExits = [...app.state.exits].sort((a,b) => new Date(b.CRIADO_EM) - new Date(a.CRIADO_EM)).slice(0, 5);
+        ui.renderTable('exits-table', paged, exitCols);
+        app.updatePaginationControls('exits', currentPage, totalPages, total);
+    },
+
+    changePage: (type, delta) => {
+        app.state.pagination[type].page += delta;
+        if (type === 'entries') app.renderEntriesTable();
+        if (type === 'exits') app.renderExitsTable();
+    },
+
+    updatePaginationControls: (type, page, totalPages, totalItems) => {
+        const container = document.getElementById(`${type}-pagination`);
+        if (!container) return;
         
-        ui.renderTable('entries-table', sortedEntries, entryCols);
-        ui.renderTable('exits-table', sortedExits, exitCols);
+        container.innerHTML = `
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+                Página ${page} de ${totalPages || 1} (${totalItems} itens)
+            </span>
+            <div class="flex gap-2">
+                <button onclick="app.changePage('${type}', -1)" ${page <= 1 ? 'disabled' : ''} class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors dark:text-white">
+                    Anterior
+                </button>
+                <button onclick="app.changePage('${type}', 1)" ${page >= totalPages ? 'disabled' : ''} class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors dark:text-white">
+                    Próximo
+                </button>
+            </div>
+        `;
     },
 
     sortData: (column, datasetName = 'balance') => {
