@@ -1087,6 +1087,38 @@ const app = {
             filtered = filtered.filter(item => item.type === typeFilter);
         }
 
+        // Apply Sort
+        const { column, direction } = app.state.sort;
+        if (column) {
+            const dir = direction === 'asc' ? 1 : -1;
+            filtered.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+                
+                // Numeric handling
+                if (column === 'qty' || column === 'min' || column === 'ESTOQUE_MINIMO' || column === 'QUANTIDADE') {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
+                } else if (column === 'code' || column === 'CODIGO') {
+                     const num = parseFloat(valA);
+                     valA = isNaN(num) ? (valA || '').toString().toLowerCase() : num;
+                     
+                     const numB = parseFloat(valB);
+                     valB = isNaN(numB) ? (valB || '').toString().toLowerCase() : numB;
+                } else {
+                    valA = (valA || '').toString().toLowerCase();
+                    valB = (valB || '').toString().toLowerCase();
+                }
+
+                if (valA < valB) return -1 * dir;
+                if (valA > valB) return 1 * dir;
+                return 0;
+            });
+            
+            // Update icons to match current state
+            app.updateSortIcons(column, direction);
+        }
+
         // Update Stats Cards
         document.getElementById('total-items').textContent = filtered.length;
         const lowStock = filtered.filter(i => i.status === 'ESTOQUE BAIXO').length;
