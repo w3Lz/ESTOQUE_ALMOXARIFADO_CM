@@ -88,10 +88,11 @@ const app = {
         logs: [],
         charts: {}, // Store Chart.js instances
         sort: {
-            column: null,
-            direction: 'asc' // or 'desc'
+            column: 'qty',
+            direction: 'desc'
         },
         activeSearchForm: null, // 'entry' or 'exit'
+        dashboardTypeFilter: null,
         pagination: {
             entries: { page: 1, limit: 10 },
             exits: { page: 1, limit: 10 },
@@ -312,7 +313,7 @@ const app = {
             const currentValue = el.value; // Preserve selection if possible
             
             // Clear but keep first option if it's a filter
-            if (id === 'product-type-filter' || id === 'dashboard-type-filter') {
+            if (id === 'product-type-filter') {
                 el.innerHTML = '<option value="">Todos os Tipos</option>';
             } else {
                 el.innerHTML = '';
@@ -326,7 +327,7 @@ const app = {
             });
 
             // Add 'Outro' option only for product form
-            if (id !== 'product-type-filter' && id !== 'dashboard-type-filter') {
+            if (id !== 'product-type-filter') {
                 const other = document.createElement('option');
                 other.value = 'OTHER';
                 other.textContent = 'Outro (Adicionar Novo)...';
@@ -342,7 +343,7 @@ const app = {
         populate('prod-unit', units);
         populate('prod-type', types);
         populate('product-type-filter', types);
-        populate('dashboard-type-filter', types);
+        app.renderDashboardTypeButtons(types);
         populate('entry-user', users);
         populate('exit-user', users);
 
@@ -1013,9 +1014,65 @@ const app = {
         ui.closeModal('modal-search-product');
     },
 
+    renderDashboardTypeButtons: (typesSet) => {
+        const container = document.getElementById('dashboard-filter-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // Helper to create button
+        const createBtn = (label, value) => {
+            const btn = document.createElement('button');
+            const isActive = app.state.dashboardTypeFilter === value;
+            
+            let classes = "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors whitespace-nowrap ";
+            if (isActive) {
+                classes += "bg-primary text-white border-primary";
+            } else {
+                classes += "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700";
+            }
+            
+            btn.className = classes;
+            btn.textContent = label;
+            btn.onclick = () => app.setDashboardFilter(value);
+            return btn;
+        };
+
+        // "Todos" Button (Remove Filter)
+        container.appendChild(createBtn('Todos', null));
+
+        // Type Buttons
+        typesSet.forEach(type => {
+            container.appendChild(createBtn(type, type));
+        });
+    },
+
+    setDashboardFilter: (type) => {
+        app.state.dashboardTypeFilter = type;
+        
+        // Update DOM classes directly to avoid full re-render
+        const container = document.getElementById('dashboard-filter-container');
+        if (container) {
+             const buttons = container.querySelectorAll('button');
+             buttons.forEach(btn => {
+                 const isTodos = btn.textContent === 'Todos';
+                 const btnValue = isTodos ? null : btn.textContent;
+                 const isActive = app.state.dashboardTypeFilter === btnValue;
+                 
+                 if (isActive) {
+                     btn.className = "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors whitespace-nowrap bg-primary text-white border-primary";
+                 } else {
+                     btn.className = "px-3 py-1.5 text-sm font-medium rounded-full border transition-colors whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700";
+                 }
+             });
+        }
+
+        app.filterDashboard();
+    },
+
     filterDashboard: () => {
         const searchText = document.getElementById('dashboard-search').value.toLowerCase();
-        const typeFilter = document.getElementById('dashboard-type-filter').value;
+        const typeFilter = app.state.dashboardTypeFilter;
         
         let filtered = app.state.balance;
 
@@ -1056,7 +1113,7 @@ const app = {
     showLowStock: () => {
         // Reset filters
         document.getElementById('dashboard-search').value = '';
-        document.getElementById('dashboard-type-filter').value = '';
+        app.setDashboardFilter(null);
         
         // Filter strictly by Low Stock
         const filtered = app.state.balance.filter(i => i.status === 'ESTOQUE BAIXO');
