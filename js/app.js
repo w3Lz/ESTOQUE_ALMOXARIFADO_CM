@@ -301,14 +301,17 @@ const app = {
 
         // Collect unique values - Start with defaults
         const units = new Set(['UN', 'KG', 'MT', 'CX', 'L', 'PCT']);
-        const types = new Set(['Material', 'EPI', 'Ferramenta', 'Comida']);
+        const types = new Set(['EPI', 'COPA', 'LIMPEZA', 'FERRAMENTA', 'MATERIAL']); // Defaults in Uppercase
         const users = new Set(['ADMIN']);
         
         // Add existing from products
         if (app.state.products && app.state.products.length > 0) {
             app.state.products.forEach(p => {
                 if (p.UNIDADE) addUnique(units, p.UNIDADE);
-                if (p.TIPO) addUnique(types, p.TIPO);
+                // Only add Type if it is fully uppercase (User requirement)
+                if (p.TIPO && p.TIPO === p.TIPO.toUpperCase()) {
+                    types.add(p.TIPO);
+                }
             });
         }
 
