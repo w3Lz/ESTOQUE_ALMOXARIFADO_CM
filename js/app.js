@@ -286,6 +286,60 @@ const app = {
         document.getElementById('total-items').textContent = app.state.products.length;
         const lowStock = app.state.balance.filter(i => i.status === 'ESTOQUE BAIXO').length;
         document.getElementById('low-stock-count').textContent = lowStock;
+
+        // Calculate Inactive Count
+        let inactiveCount = 0;
+        app.state.products.forEach(p => {
+            if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') inactiveCount++;
+        });
+        document.getElementById('inactive-count').textContent = inactiveCount;
+    },
+
+    openInactiveModal: () => {
+        document.getElementById('modal-inactive-search').value = '';
+        app.filterInactiveModal();
+        ui.showModal('modal-inactive-list');
+        setTimeout(() => document.getElementById('modal-inactive-search').focus(), 100);
+    },
+
+    filterInactiveModal: () => {
+        const query = document.getElementById('modal-inactive-search').value.toLowerCase();
+        const resultsBody = document.getElementById('modal-inactive-results');
+        resultsBody.innerHTML = '';
+
+        // Filter products that are INACTIVE
+        const inactiveProducts = app.state.products.filter(p => {
+            const isInactive = p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO';
+            if (!isInactive) return false;
+            
+            return (p.NOME && p.NOME.toLowerCase().includes(query)) || 
+                   (p.CODIGO && p.CODIGO.toLowerCase().includes(query));
+        });
+
+        if (inactiveProducts.length === 0) {
+            resultsBody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum produto inativo encontrado</td></tr>`;
+            return;
+        }
+
+        inactiveProducts.forEach(p => {
+            // Find current balance for context
+            const balanceItem = app.state.balance.find(b => String(b.id) === String(p.ID));
+            const currentQty = balanceItem ? Math.floor(balanceItem.qty) : '0';
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${p.CODIGO || '-'}</td>
+                <td class="px-4 py-3">${p.NOME}</td>
+                <td class="px-4 py-3">${currentQty} ${p.UNIDADE}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="app.toggleProductStatus('${p.ID}')" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded transition-colors flex items-center gap-1 justify-center mx-auto">
+                        <span class="material-symbols-outlined text-[14px]">check_circle</span> Ativar
+                    </button>
+                </td>
+            `;
+            resultsBody.appendChild(tr);
+        });
     },
 
     updateDatalists: () => {
@@ -820,6 +874,11 @@ const app = {
                 await graph.updateRow('PRODUTOS', rowNum, rowData);
                 await app.syncData();
                 ui.showToast(`Produto ${newStatus === "Sim" ? "ativado" : "inativado"} com sucesso!`, "success");
+                
+                // Refresh modals if open
+                if (!document.getElementById('modal-inactive-list').classList.contains('hidden')) {
+                    app.filterInactiveModal();
+                }
                 
                 // Log action
                 app.logAction(newStatus === "Sim" ? "ATIVAR_PRODUTO" : "INATIVAR_PRODUTO", `Produto: ${p.NOME} (${p.CODIGO})`);
