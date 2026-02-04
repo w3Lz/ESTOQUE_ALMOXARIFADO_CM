@@ -1376,8 +1376,19 @@ const app = {
             titleEl.innerHTML = `Análise de Saída por Produto (Diário) <span class="text-sm font-normal text-gray-500 ml-2">Média: ${average.toFixed(2)}</span>`;
         }
 
-        // Format dates for display (DD/MM)
-        const labels = displayDates.map(d => dateUtil.toBRShort(d));
+        // Format dates for display (DD/MM) with Day of Week
+        const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const labels = displayDates.map(d => {
+            const dateObj = dateUtil.parse(d);
+            if (!dateObj) return dateUtil.toBRShort(d);
+            
+            // Create Date object. Note: Month is 0-indexed in JS Date constructor
+            const jsDate = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+            const weekDay = daysOfWeek[jsDate.getDay()];
+            
+            // Return array for multiline label
+            return [dateUtil.toBRShort(d), weekDay];
+        });
 
         const productName = app.state.products.find(p => String(p.ID) === String(pid))?.NOME || 'Produto';
 
