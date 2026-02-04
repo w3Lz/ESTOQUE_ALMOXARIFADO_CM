@@ -222,7 +222,19 @@ const app = {
             }
 
             const now = new Date();
-            document.getElementById('last-sync').textContent = `${now.toLocaleTimeString()}`;
+            const timeString = now.toLocaleTimeString('pt-BR');
+            const dateString = now.toLocaleDateString('pt-BR');
+            
+            // Update mini status
+            const miniStatus = document.getElementById('last-sync-mini');
+            if (miniStatus) {
+                miniStatus.textContent = timeString;
+                miniStatus.title = `Sincronizado em ${dateString} às ${timeString}`;
+            }
+
+            // Update card (if exists - removed in v2.4 update but kept for compatibility)
+            const lastSyncEl = document.getElementById('last-sync');
+            if (lastSyncEl) lastSyncEl.textContent = timeString;
             
             if (!silent && products.length > 0) ui.showToast("Dados atualizados com sucesso", "success");
 
