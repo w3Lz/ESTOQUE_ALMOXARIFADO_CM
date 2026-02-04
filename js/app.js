@@ -1,5 +1,8 @@
 const dateUtil = {
-    pad2: (n) => String(n).padStart(2, '0'),
+    pad2: (n) => {
+        if (n === null || n === undefined || isNaN(n)) return '00';
+        return String(n).padStart(2, '0');
+    },
     parse: (value) => {
         if (!value) return null;
         if (value instanceof Date && !isNaN(value.getTime())) {
@@ -17,6 +20,7 @@ const dateUtil = {
             return d >= 1 && d <= maxDay;
         };
 
+        // ISO: YYYY-MM-DD (start of string)
         const isoDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (isoDateMatch) {
             const y = parseInt(isoDateMatch[1], 10);
@@ -25,7 +29,8 @@ const dateUtil = {
             if (isValid(y, m, d)) return { y, m, d };
         }
 
-        const brDateMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        // BR: DD/MM/YYYY (start of string, allowing potential time after)
+        const brDateMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (brDateMatch) {
             const d = parseInt(brDateMatch[1], 10);
             const m = parseInt(brDateMatch[2], 10);
@@ -33,7 +38,8 @@ const dateUtil = {
             if (isValid(y, m, d)) return { y, m, d };
         }
 
-        const ymdSlashMatch = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+        // YMD Slash: YYYY/MM/DD
+        const ymdSlashMatch = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
         if (ymdSlashMatch) {
             const y = parseInt(ymdSlashMatch[1], 10);
             const m = parseInt(ymdSlashMatch[2], 10);
@@ -50,12 +56,12 @@ const dateUtil = {
     },
     toBR: (value) => {
         const p = dateUtil.parse(value);
-        if (!p) return '';
+        if (!p) return value || ''; // Fallback to original value if parse fails
         return `${dateUtil.pad2(p.d)}/${dateUtil.pad2(p.m)}/${p.y}`;
     },
     toBRShort: (value) => {
         const p = dateUtil.parse(value);
-        if (!p) return '';
+        if (!p) return value || ''; // Fallback
         return `${dateUtil.pad2(p.d)}/${dateUtil.pad2(p.m)}`;
     },
     getYear: (value) => {
