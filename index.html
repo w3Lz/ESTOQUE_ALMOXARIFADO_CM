@@ -431,11 +431,16 @@
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                             <span class="material-symbols-outlined">search</span>
                                         </div>
-                                        <input type="text" id="entry-search" onkeyup="app.renderEntriesTable()" placeholder="Buscar por origem, responsável, data..." class="pl-10 w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
+                                        <input type="text" id="entry-search" onkeyup="app.renderEntriesTable()" placeholder="Buscar por origem, responsável, data ou observação..." class="pl-10 w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
                                     </div>
-                                    <select id="entry-product-filter" onchange="app.renderEntriesTable()" class="rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white sm:w-64">
-                                        <option value="">Todos os Produtos</option>
-                                    </select>
+                                    <div class="flex gap-2 sm:w-64">
+                                        <select id="entry-product-filter" onchange="app.renderEntriesTable()" class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
+                                            <option value="">Todos os Produtos</option>
+                                        </select>
+                                        <button type="button" onclick="app.openProductSearch('entry-filter')" class="flex items-center justify-center bg-blue-100 hover:bg-blue-200 dark:bg-primary/20 dark:hover:bg-primary/30 text-primary dark:text-blue-300 rounded-lg px-3 transition-colors shrink-0" title="Buscar Produto">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="overflow-hidden rounded-xl border border-[#dadfe7] dark:border-gray-700 bg-white dark:bg-surface-dark shadow-sm w-full">
                                     <div class="overflow-x-auto w-full">
@@ -532,11 +537,16 @@
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                             <span class="material-symbols-outlined">search</span>
                                         </div>
-                                        <input type="text" id="exit-search" onkeyup="app.renderExitsTable()" placeholder="Buscar por destino, responsável, data..." class="pl-10 w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
+                                        <input type="text" id="exit-search" onkeyup="app.renderExitsTable()" placeholder="Buscar por destino, responsável, data ou observação..." class="pl-10 w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
                                     </div>
-                                    <select id="exit-product-filter" onchange="app.renderExitsTable()" class="rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white sm:w-64">
-                                        <option value="">Todos os Produtos</option>
-                                    </select>
+                                    <div class="flex gap-2 sm:w-64">
+                                        <select id="exit-product-filter" onchange="app.renderExitsTable()" class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-primary focus:border-primary dark:text-white">
+                                            <option value="">Todos os Produtos</option>
+                                        </select>
+                                        <button type="button" onclick="app.openProductSearch('exit-filter')" class="flex items-center justify-center bg-blue-100 hover:bg-blue-200 dark:bg-primary/20 dark:hover:bg-primary/30 text-primary dark:text-blue-300 rounded-lg px-3 transition-colors shrink-0" title="Buscar Produto">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="overflow-hidden rounded-xl border border-[#dadfe7] dark:border-gray-700 bg-white dark:bg-surface-dark shadow-sm w-full">
                                     <div class="overflow-x-auto w-full">

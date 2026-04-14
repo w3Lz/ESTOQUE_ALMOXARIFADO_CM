@@ -695,6 +695,7 @@ const app = {
                 return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
                        (e.ORIGEM && e.ORIGEM.toLowerCase().includes(query)) ||
                        (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
+                       (e.OBSERVACAO && e.OBSERVACAO.toLowerCase().includes(query)) || // Add OBSERVACAO here
                        (prodName.toLowerCase().includes(query));
             });
         }
@@ -769,6 +770,7 @@ const app = {
                 return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
                        (e.DESTINO && e.DESTINO.toLowerCase().includes(query)) ||
                        (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
+                       (e.OBSERVACAO && e.OBSERVACAO.toLowerCase().includes(query)) || // Add OBSERVACAO here
                        (prodName.toLowerCase().includes(query));
             });
         }
@@ -1240,7 +1242,9 @@ const app = {
             'exit': 'exit-product-id',
             'edit-entry': 'edit-entry-product-id',
             'edit-exit': 'edit-exit-product-id',
-            'report': 'report-product-select'
+            'report': 'report-product-select',
+            'entry-filter': 'entry-product-filter', // Added for filters
+            'exit-filter': 'exit-product-filter'    // Added for filters
         };
         const targetId = targetMap[app.state.activeSearchForm];
         
@@ -1251,6 +1255,13 @@ const app = {
             // Special trigger for reports
             if (app.state.activeSearchForm === 'report') {
                 app.renderProductFrequencyChart();
+            }
+            // Trigger filter update for tables
+            if (app.state.activeSearchForm === 'entry-filter') {
+                app.renderEntriesTable();
+            }
+            if (app.state.activeSearchForm === 'exit-filter') {
+                app.renderExitsTable();
             }
         }
         ui.closeModal('modal-search-product');
