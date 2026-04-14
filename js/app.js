@@ -5,6 +5,117 @@ const strUtil = {
     }
 };
 
+const estoqueUtil = {
+    calcularDuracaoEstoque: (produtoId, saldoAtual, historicoSaidas) => {
+        // 1. ANALISE o histórico de saídas dos últimos 90 dias
+        const hoje = new Date();
+        const limite90Dias = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000);
+        
+        const saidasProduto = historicoSaidas
+            .filter(s => String(s.PRODUTO_ID) === String(produtoId))
+            .map(s => {
+                const parsedDate = dateUtil.parse(s.DATA);
+                return {
+                    data: parsedDate ? new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d) : null,
+                    qtd: parseFloat(s.QUANTIDADE) || 0
+                };
+            })
+            .filter(s => s.data && s.data >= limite90Dias)
+            .sort((a, b) => b.data - a.data); // Mais recentes primeiro
+
+        if (saidasProduto.length === 0) {
+            return {
+                classificacao: "SEM_SAIDAS",
+                frequenciaSemanal: 0,
+                intervaloMedioDias: 0,
+                duracaoEstoque: 0,
+                unidadeTempo: "indefinido",
+                status: "PARADO",
+                ultimaSaida: null,
+                proximaSaidaPrevista: null
+            };
+        }
+
+        // 2. CALCULE a frequência real
+        const ultimaSaida = saidasProduto[0].data;
+        const primeiraSaidaPeriodo = saidasProduto[saidasProduto.length - 1].data;
+        
+        let diasNoPeriodo = (ultimaSaida - primeiraSaidaPeriodo) / (1000 * 60 * 60 * 24);
+        if (diasNoPeriodo === 0) diasNoPeriodo = 1;
+
+        const diasAnalisados = Math.max(diasNoPeriodo, 1);
+        const semanasAnalisadas = diasAnalisados / 7;
+        const mesesAnalisados = diasAnalisados / 30;
+
+        const totalSaidas = saidasProduto.length; 
+        const qtdTotalSaindo = saidasProduto.reduce((acc, curr) => acc + curr.qtd, 0);
+
+        const frequenciaSemanal = totalSaidas / (semanasAnalisadas || 1);
+        const intervaloMedioDias = totalSaidas > 1 ? diasAnalisados / (totalSaidas - 1) : diasAnalisados;
+        const quantidadeMediaPorSaida = qtdTotalSaindo / totalSaidas;
+
+        const mediaDiaria = qtdTotalSaindo / diasAnalisados;
+        const mediaSemanal = qtdTotalSaindo / (semanasAnalisadas || 1);
+        const mediaMensal = qtdTotalSaindo / (mesesAnalisados || 1);
+
+        // 3. CLASSIFIQUE automaticamente
+        let classificacao = "BAIXO_GIRO";
+        if (frequenciaSemanal >= 5) {
+            classificacao = "ALTO_GIRO";
+        } else if (frequenciaSemanal >= 1) {
+            classificacao = "MEDIO_GIRO";
+        }
+
+        // 4. CALCULE a duração do estoque de forma inteligente
+        let duracaoEstoque = 0;
+        let unidadeTempo = "";
+        let alertarSeParado = false;
+
+        if (classificacao === "ALTO_GIRO") {
+            duracaoEstoque = mediaDiaria > 0 ? saldoAtual / mediaDiaria : 0;
+            unidadeTempo = "dias";
+        } else if (classificacao === "MEDIO_GIRO") {
+            duracaoEstoque = mediaSemanal > 0 ? saldoAtual / mediaSemanal : 0;
+            unidadeTempo = "semanas";
+        } else {
+            duracaoEstoque = mediaMensal > 0 ? saldoAtual / mediaMensal : 0;
+            unidadeTempo = "meses";
+            
+            const diasSemSair = (hoje - ultimaSaida) / (1000 * 60 * 60 * 24);
+            if (diasSemSair > 30) {
+                alertarSeParado = true;
+            }
+        }
+
+        // Status
+        let status = "OK";
+        if (alertarSeParado) {
+            status = "PARADO";
+        } else if (duracaoEstoque <= 1 && duracaoEstoque > 0) {
+             status = "CRITICO";
+        } else if (duracaoEstoque <= 2 && duracaoEstoque > 0) {
+             status = "ATENCAO";
+        }
+        
+        if (saldoAtual <= 0) status = "ZERADO";
+
+        const proximaSaidaPrevista = new Date(ultimaSaida.getTime() + intervaloMedioDias * 24 * 60 * 60 * 1000);
+
+        return {
+            classificacao,
+            frequenciaSemanal: parseFloat(frequenciaSemanal.toFixed(2)),
+            intervaloMedioDias: Math.round(intervaloMedioDias),
+            quantidadeMediaPorSaida: parseFloat(quantidadeMediaPorSaida.toFixed(2)),
+            duracaoEstoque: parseFloat(duracaoEstoque.toFixed(1)),
+            unidadeTempo,
+            status,
+            ultimaSaida: dateUtil.format(ultimaSaida.getDate(), ultimaSaida.getMonth() + 1, ultimaSaida.getFullYear()),
+            proximaSaidaPrevista: dateUtil.format(proximaSaidaPrevista.getDate(), proximaSaidaPrevista.getMonth() + 1, proximaSaidaPrevista.getFullYear()),
+            diasSemSair: Math.round((hoje - ultimaSaida) / (1000 * 60 * 60 * 24))
+        };
+    }
+};
+
 const dateUtil = {
     pad2: (n) => {
         if (n === null || n === undefined || isNaN(n)) return '00';
@@ -310,6 +421,10 @@ const app = {
             } else {
                 item.status = 'OK';
             }
+
+            // Calculate Stock Duration
+            item.giro = estoqueUtil.calcularDuracaoEstoque(item.id, item.qty, app.state.exits);
+
             return item;
         });
         
@@ -631,7 +746,30 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
+            { field: 'qty', render: (r) => {
+                let giroHtml = '';
+                if (r.giro && r.giro.classificacao !== 'SEM_SAIDAS') {
+                    let cor = 'text-gray-500 dark:text-gray-400';
+                    if (r.giro.status === 'CRITICO') cor = 'text-red-500 dark:text-red-400 font-bold';
+                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                    
+                    let tempoStr = r.giro.duracaoEstoque > 0 ? `Dura ~${r.giro.duracaoEstoque} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                    if (r.qty <= 0) tempoStr = '-';
+                    
+                    giroHtml = `<div class="text-[10px] ${cor} mt-1 leading-tight" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+                } else if (r.giro && r.giro.classificacao === 'SEM_SAIDAS') {
+                    giroHtml = `<div class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                }
+
+                return `
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="text-xl font-bold">${Math.floor(r.qty)}</div>
+                        ${giroHtml}
+                    </div>
+                `;
+            }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
                     return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
@@ -1419,7 +1557,30 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
+            { field: 'qty', render: (r) => {
+                let giroHtml = '';
+                if (r.giro && r.giro.classificacao !== 'SEM_SAIDAS') {
+                    let cor = 'text-gray-500 dark:text-gray-400';
+                    if (r.giro.status === 'CRITICO') cor = 'text-red-500 dark:text-red-400 font-bold';
+                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                    
+                    let tempoStr = r.giro.duracaoEstoque > 0 ? `Dura ~${r.giro.duracaoEstoque} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                    if (r.qty <= 0) tempoStr = '-';
+                    
+                    giroHtml = `<div class="text-[10px] ${cor} mt-1 leading-tight" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+                } else if (r.giro && r.giro.classificacao === 'SEM_SAIDAS') {
+                    giroHtml = `<div class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                }
+
+                return `
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="text-xl font-bold">${Math.floor(r.qty)}</div>
+                        ${giroHtml}
+                    </div>
+                `;
+            }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
                     return `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">OK</span>`;
