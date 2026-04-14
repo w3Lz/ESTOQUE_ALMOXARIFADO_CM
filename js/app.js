@@ -1,3 +1,10 @@
+const strUtil = {
+    normalize: (str) => {
+        if (!str) return '';
+        return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+};
+
 const dateUtil = {
     pad2: (n) => {
         if (n === null || n === undefined || isNaN(n)) return '00';
@@ -338,13 +345,13 @@ const app = {
     },
 
     filterComprarModal: () => {
-        const query = document.getElementById('modal-comprar-search').value.toLowerCase();
+        const query = strUtil.normalize(document.getElementById('modal-comprar-search').value);
         const resultsBody = document.getElementById('modal-comprar-results');
         resultsBody.innerHTML = '';
 
         const items = app.state.balance.filter(i => i.status === 'COMPRAR' && (
-            (i.name && i.name.toLowerCase().includes(query)) || 
-            (i.code && i.code.toString().toLowerCase().includes(query))
+            strUtil.normalize(i.name).includes(query) || 
+            strUtil.normalize(i.code).includes(query)
         ));
 
         if (items.length === 0) {
@@ -377,13 +384,13 @@ const app = {
     },
 
     filterZeradoModal: () => {
-        const query = document.getElementById('modal-zerado-search').value.toLowerCase();
+        const query = strUtil.normalize(document.getElementById('modal-zerado-search').value);
         const resultsBody = document.getElementById('modal-zerado-results');
         resultsBody.innerHTML = '';
 
         const items = app.state.balance.filter(i => i.status === 'SEM ESTOQUE' && (
-            (i.name && i.name.toLowerCase().includes(query)) || 
-            (i.code && i.code.toString().toLowerCase().includes(query))
+            strUtil.normalize(i.name).includes(query) || 
+            strUtil.normalize(i.code).includes(query)
         ));
 
         if (items.length === 0) {
@@ -416,7 +423,7 @@ const app = {
     },
 
     filterInactiveModal: () => {
-        const query = document.getElementById('modal-inactive-search').value.toLowerCase();
+        const query = strUtil.normalize(document.getElementById('modal-inactive-search').value);
         const resultsBody = document.getElementById('modal-inactive-results');
         resultsBody.innerHTML = '';
 
@@ -425,8 +432,8 @@ const app = {
             const isInactive = p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO';
             if (!isInactive) return false;
             
-            return (p.NOME && p.NOME.toLowerCase().includes(query)) || 
-                   (p.CODIGO && p.CODIGO.toLowerCase().includes(query));
+            return strUtil.normalize(p.NOME).includes(query) || 
+                   strUtil.normalize(p.CODIGO).includes(query);
         });
 
         if (inactiveProducts.length === 0) {
@@ -678,7 +685,7 @@ const app = {
 
         // Search Filters
         const searchInput = document.getElementById('entry-search');
-        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const query = searchInput ? strUtil.normalize(searchInput.value) : '';
         const prodFilter = document.getElementById('entry-product-filter');
         const prodId = prodFilter ? prodFilter.value : '';
 
@@ -692,11 +699,11 @@ const app = {
         if (query) {
             filtered = filtered.filter(e => {
                 const prodName = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID))?.NOME || '';
-                return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
-                       (e.ORIGEM && e.ORIGEM.toLowerCase().includes(query)) ||
-                       (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
-                       (e.OBSERVACAO && e.OBSERVACAO.toLowerCase().includes(query)) || // Add OBSERVACAO here
-                       (prodName.toLowerCase().includes(query));
+                return strUtil.normalize(e.DATA).includes(query) ||
+                       strUtil.normalize(e.ORIGEM).includes(query) ||
+                       strUtil.normalize(e.USUARIO).includes(query) ||
+                       strUtil.normalize(e.OBSERVACAO).includes(query) ||
+                       strUtil.normalize(prodName).includes(query);
             });
         }
 
@@ -753,7 +760,7 @@ const app = {
 
         // Search Filters
         const searchInput = document.getElementById('exit-search');
-        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const query = searchInput ? strUtil.normalize(searchInput.value) : '';
         const prodFilter = document.getElementById('exit-product-filter');
         const prodId = prodFilter ? prodFilter.value : '';
 
@@ -767,11 +774,11 @@ const app = {
         if (query) {
             filtered = filtered.filter(e => {
                 const prodName = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID))?.NOME || '';
-                return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
-                       (e.DESTINO && e.DESTINO.toLowerCase().includes(query)) ||
-                       (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
-                       (e.OBSERVACAO && e.OBSERVACAO.toLowerCase().includes(query)) || // Add OBSERVACAO here
-                       (prodName.toLowerCase().includes(query));
+                return strUtil.normalize(e.DATA).includes(query) ||
+                       strUtil.normalize(e.DESTINO).includes(query) ||
+                       strUtil.normalize(e.USUARIO).includes(query) ||
+                       strUtil.normalize(e.OBSERVACAO).includes(query) ||
+                       strUtil.normalize(prodName).includes(query);
             });
         }
 
@@ -915,15 +922,15 @@ const app = {
     },
 
     filterProducts: () => {
-        const searchText = document.getElementById('product-search').value.toLowerCase();
+        const searchText = strUtil.normalize(document.getElementById('product-search').value);
         const typeFilter = document.getElementById('product-type-filter').value;
         
         let filtered = app.state.products;
 
         if (searchText) {
             filtered = filtered.filter(p => 
-                (p.NOME && p.NOME.toLowerCase().includes(searchText)) || 
-                (p.CODIGO && p.CODIGO.toLowerCase().includes(searchText))
+                strUtil.normalize(p.NOME).includes(searchText) || 
+                strUtil.normalize(p.CODIGO).includes(searchText)
             );
         }
 
@@ -1198,15 +1205,15 @@ const app = {
     },
 
     filterSearchProducts: () => {
-        const query = document.getElementById('modal-search-input').value.toLowerCase();
+        const query = strUtil.normalize(document.getElementById('modal-search-input').value);
         const resultsBody = document.getElementById('modal-search-results');
         resultsBody.innerHTML = '';
 
         const filtered = app.state.products.filter(p => {
              // Only active products
              if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return false;
-             return (p.NOME && p.NOME.toLowerCase().includes(query)) || 
-                    (p.CODIGO && p.CODIGO.toLowerCase().includes(query));
+             return strUtil.normalize(p.NOME).includes(query) || 
+                    strUtil.normalize(p.CODIGO).includes(query);
         });
 
         if (filtered.length === 0) {
@@ -1346,7 +1353,7 @@ const app = {
     },
 
     filterDashboard: () => {
-        const searchText = document.getElementById('dashboard-search').value.toLowerCase();
+        const searchText = strUtil.normalize(document.getElementById('dashboard-search').value);
         const typeFilter = app.state.dashboardTypeFilter;
         const showInactive = app.state.showInactive;
         
@@ -1362,8 +1369,8 @@ const app = {
 
         if (searchText) {
             filtered = filtered.filter(item => 
-                (item.name && item.name.toLowerCase().includes(searchText)) || 
-                (item.code && item.code.toLowerCase().includes(searchText))
+                strUtil.normalize(item.name).includes(searchText) || 
+                strUtil.normalize(item.code).includes(searchText)
             );
         }
 
@@ -1480,10 +1487,10 @@ const app = {
     filterTable: (tableId, query) => {
         const table = document.getElementById(tableId);
         const trs = table.querySelectorAll('tbody tr');
-        query = query.toLowerCase();
+        query = strUtil.normalize(query);
         
         trs.forEach(tr => {
-            const text = tr.textContent.toLowerCase();
+            const text = strUtil.normalize(tr.textContent);
             tr.style.display = text.includes(query) ? '' : 'none';
         });
     },
