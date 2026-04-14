@@ -746,29 +746,22 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: (r) => {
-                let giroHtml = '';
-                if (r.giro && r.giro.classificacao !== 'SEM_SAIDAS') {
-                    let cor = 'text-gray-500 dark:text-gray-400';
-                    if (r.giro.status === 'CRITICO') cor = 'text-red-500 dark:text-red-400 font-bold';
-                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
-                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
-                    
-                    let tempoStr = r.giro.duracaoEstoque > 0 ? `Dura ~${r.giro.duracaoEstoque} ${r.giro.unidadeTempo}` : 'Sem previsão';
-                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
-                    if (r.qty <= 0) tempoStr = '-';
-                    
-                    giroHtml = `<div class="text-[10px] ${cor} mt-1 leading-tight" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
-                } else if (r.giro && r.giro.classificacao === 'SEM_SAIDAS') {
-                    giroHtml = `<div class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
+            { field: 'giro', render: (r) => {
+                if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
                 }
-
-                return `
-                    <div class="flex flex-col items-center justify-center">
-                        <div class="text-xl font-bold">${Math.floor(r.qty)}</div>
-                        ${giroHtml}
-                    </div>
-                `;
+                
+                let cor = 'text-gray-600 dark:text-gray-400';
+                if (r.giro.status === 'CRITICO') cor = 'text-red-600 dark:text-red-400 font-bold';
+                else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                
+                let tempoStr = r.giro.duracaoEstoque > 0 ? `~${Math.round(r.giro.duracaoEstoque)} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                if (r.qty <= 0) tempoStr = '-';
+                
+                return `<div class="text-center text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
             }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
@@ -1557,29 +1550,22 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: (r) => {
-                let giroHtml = '';
-                if (r.giro && r.giro.classificacao !== 'SEM_SAIDAS') {
-                    let cor = 'text-gray-500 dark:text-gray-400';
-                    if (r.giro.status === 'CRITICO') cor = 'text-red-500 dark:text-red-400 font-bold';
-                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
-                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
-                    
-                    let tempoStr = r.giro.duracaoEstoque > 0 ? `Dura ~${r.giro.duracaoEstoque} ${r.giro.unidadeTempo}` : 'Sem previsão';
-                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
-                    if (r.qty <= 0) tempoStr = '-';
-                    
-                    giroHtml = `<div class="text-[10px] ${cor} mt-1 leading-tight" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
-                } else if (r.giro && r.giro.classificacao === 'SEM_SAIDAS') {
-                    giroHtml = `<div class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
+            { field: 'giro', render: (r) => {
+                if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
+                    return `<div class="text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
                 }
-
-                return `
-                    <div class="flex flex-col items-center justify-center">
-                        <div class="text-xl font-bold">${Math.floor(r.qty)}</div>
-                        ${giroHtml}
-                    </div>
-                `;
+                
+                let cor = 'text-gray-600 dark:text-gray-400';
+                if (r.giro.status === 'CRITICO') cor = 'text-red-600 dark:text-red-400 font-bold';
+                else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                
+                let tempoStr = r.giro.duracaoEstoque > 0 ? `~${Math.round(r.giro.duracaoEstoque)} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                if (r.qty <= 0) tempoStr = '-';
+                
+                return `<div class="text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
             }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
@@ -1635,12 +1621,27 @@ const app = {
             { field: 'name' },
             { field: 'unit' },
             { field: 'type' },
-            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` }, // Show as Integer, Large, Centered
+            { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
+            { field: 'giro', render: (r) => {
+                if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                }
+                
+                let cor = 'text-gray-600 dark:text-gray-400';
+                if (r.giro.status === 'CRITICO') cor = 'text-red-600 dark:text-red-400 font-bold';
+                else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                
+                let tempoStr = r.giro.duracaoEstoque > 0 ? `~${Math.round(r.giro.duracaoEstoque)} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                if (r.qty <= 0) tempoStr = '-';
+                
+                return `<div class="text-center text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+            }},
             { field: 'status', render: (row) => {
                 return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
             }}
         ];
-
         ui.renderTable('dashboard-table', filtered, dashboardCols);
         ui.showToast("Exibindo apenas itens com Estoque Baixo", "warning");
     },
