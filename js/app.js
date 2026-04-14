@@ -109,8 +109,8 @@ const estoqueUtil = {
             duracaoEstoque: parseFloat(duracaoEstoque.toFixed(1)),
             unidadeTempo,
             status,
-            ultimaSaida: dateUtil.format(ultimaSaida.getDate(), ultimaSaida.getMonth() + 1, ultimaSaida.getFullYear()),
-            proximaSaidaPrevista: dateUtil.format(proximaSaidaPrevista.getDate(), proximaSaidaPrevista.getMonth() + 1, proximaSaidaPrevista.getFullYear()),
+            ultimaSaida: dateUtil.toBR(ultimaSaida),
+            proximaSaidaPrevista: dateUtil.toBR(proximaSaidaPrevista),
             diasSemSair: Math.round((hoje - ultimaSaida) / (1000 * 60 * 60 * 24))
         };
     }
