@@ -60,10 +60,16 @@ const estoqueUtil = {
 
         // 3. CLASSIFIQUE automaticamente
         let classificacao = "BAIXO_GIRO";
+        let frequenciaFormatada = "";
+
         if (frequenciaSemanal >= 5) {
             classificacao = "ALTO_GIRO";
+            frequenciaFormatada = `${Math.round(mediaDiaria)} por dia`;
         } else if (frequenciaSemanal >= 1) {
             classificacao = "MEDIO_GIRO";
+            frequenciaFormatada = `${Math.round(mediaSemanal)} por semana`;
+        } else {
+            frequenciaFormatada = `${Math.round(mediaMensal)} por mês`;
         }
 
         // 4. CALCULE a duração do estoque de forma inteligente
@@ -104,6 +110,7 @@ const estoqueUtil = {
         return {
             classificacao,
             frequenciaSemanal: parseFloat(frequenciaSemanal.toFixed(2)),
+            frequenciaFormatada,
             intervaloMedioDias: Math.round(intervaloMedioDias),
             quantidadeMediaPorSaida: parseFloat(quantidadeMediaPorSaida.toFixed(2)),
             duracaoEstoque: parseFloat(duracaoEstoque.toFixed(1)),
@@ -761,7 +768,10 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="text-center text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                            <div class="text-sm ${cor}">${tempoStr}</div>
+                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
+                        </div>`;
             }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
@@ -1636,7 +1646,10 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="text-center text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                            <div class="text-sm ${cor}">${tempoStr}</div>
+                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
+                        </div>`;
             }},
             { field: 'status', render: (row) => {
                 return `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">BAIXO</span>`;
