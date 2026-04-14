@@ -643,7 +643,12 @@ const app = {
         const populateSelect = (id) => {
             const sel = document.getElementById(id);
             if (!sel) return;
-            sel.innerHTML = '<option value="">Selecione...</option>';
+            const currentVal = sel.value; // Preserve user selection
+            
+            // Check if it's a filter to change the default option text
+            const defaultText = id.includes('filter') ? 'Todos os Produtos' : 'Selecione...';
+            sel.innerHTML = `<option value="">${defaultText}</option>`;
+            
             app.state.products.forEach(p => {
                 if (p.ATIVO && String(p.ATIVO).toUpperCase() === 'NÃO') return; 
                 const opt = document.createElement('option');
@@ -651,9 +656,13 @@ const app = {
                 opt.textContent = `${p.CODIGO || p.ID} - ${p.NOME}`;
                 sel.appendChild(opt);
             });
+            
+            if (currentVal) sel.value = currentVal; // Restore selection
         };
         populateSelect('entry-product-id');
         populateSelect('exit-product-id');
+        populateSelect('entry-product-filter');
+        populateSelect('exit-product-filter');
 
         // Update Datalists
         app.updateDatalists();
@@ -667,8 +676,31 @@ const app = {
         const page = app.state.pagination.entries.page;
         const limit = app.state.pagination.entries.limit;
 
+        // Search Filters
+        const searchInput = document.getElementById('entry-search');
+        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const prodFilter = document.getElementById('entry-product-filter');
+        const prodId = prodFilter ? prodFilter.value : '';
+
+        // Filter data
+        let filtered = app.state.entries;
+        
+        if (prodId) {
+            filtered = filtered.filter(e => String(e.PRODUTO_ID) === String(prodId));
+        }
+        
+        if (query) {
+            filtered = filtered.filter(e => {
+                const prodName = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID))?.NOME || '';
+                return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
+                       (e.ORIGEM && e.ORIGEM.toLowerCase().includes(query)) ||
+                       (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
+                       (prodName.toLowerCase().includes(query));
+            });
+        }
+
         // Sort by DATA (desc), then ID (desc)
-        const sorted = [...app.state.entries].sort((a, b) => {
+        const sorted = [...filtered].sort((a, b) => {
              const dateA = dateUtil.parse(a.DATA);
              const dateB = dateUtil.parse(b.DATA);
              const timeA = dateA ? new Date(dateA.y, dateA.m-1, dateA.d).getTime() : 0;
@@ -718,8 +750,31 @@ const app = {
         const page = app.state.pagination.exits.page;
         const limit = app.state.pagination.exits.limit;
 
+        // Search Filters
+        const searchInput = document.getElementById('exit-search');
+        const query = searchInput ? searchInput.value.toLowerCase() : '';
+        const prodFilter = document.getElementById('exit-product-filter');
+        const prodId = prodFilter ? prodFilter.value : '';
+
+        // Filter data
+        let filtered = app.state.exits;
+        
+        if (prodId) {
+            filtered = filtered.filter(e => String(e.PRODUTO_ID) === String(prodId));
+        }
+        
+        if (query) {
+            filtered = filtered.filter(e => {
+                const prodName = app.state.products.find(p => String(p.ID) === String(e.PRODUTO_ID))?.NOME || '';
+                return (e.DATA && e.DATA.toLowerCase().includes(query)) ||
+                       (e.DESTINO && e.DESTINO.toLowerCase().includes(query)) ||
+                       (e.USUARIO && e.USUARIO.toLowerCase().includes(query)) ||
+                       (prodName.toLowerCase().includes(query));
+            });
+        }
+
         // Sort by DATA (desc), then ID (desc)
-        const sorted = [...app.state.exits].sort((a, b) => {
+        const sorted = [...filtered].sort((a, b) => {
              const dateA = dateUtil.parse(a.DATA);
              const dateB = dateUtil.parse(b.DATA);
              const timeA = dateA ? new Date(dateA.y, dateA.m-1, dateA.d).getTime() : 0;
@@ -2119,6 +2174,7 @@ const app = {
         try {
             await graph.addRow('ENTRADAS', [row]);
             document.getElementById('form-entry').reset();
+            document.getElementById('entry-date').value = new Date().toISOString().split('T')[0]; // Keep date as today
             await app.syncData();
             ui.showToast("Entrada registrada!", "success");
             
@@ -2166,6 +2222,7 @@ const app = {
         try {
             await graph.addRow('SAIDAS', [row]);
             document.getElementById('form-exit').reset();
+            document.getElementById('exit-date').value = new Date().toISOString().split('T')[0]; // Keep date as today
             await app.syncData();
             ui.showToast("Saída registrada!", "success");
 
