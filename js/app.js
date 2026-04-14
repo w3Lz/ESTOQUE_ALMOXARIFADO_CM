@@ -770,7 +770,7 @@ const app = {
                 
                 return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
                             <div class="text-sm ${cor}">${tempoStr}</div>
-                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
+                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
                         </div>`;
             }},
             { field: 'status', render: (row) => {
@@ -1563,7 +1563,7 @@ const app = {
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
-                    return `<div class="text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
                 }
                 
                 let cor = 'text-gray-600 dark:text-gray-400';
@@ -1575,7 +1575,10 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="text-sm ${cor}" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">${tempoStr}</div>`;
+                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                            <div class="text-sm ${cor}">${tempoStr}</div>
+                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
+                        </div>`;
             }},
             { field: 'status', render: (row) => {
                 if (row.status === 'OK') {
@@ -1648,7 +1651,7 @@ const app = {
                 
                 return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
                             <div class="text-sm ${cor}">${tempoStr}</div>
-                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
+                            ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
                         </div>`;
             }},
             { field: 'status', render: (row) => {
