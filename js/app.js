@@ -431,6 +431,12 @@ const app = {
 
             // Calculate Stock Duration
             item.giro = estoqueUtil.calcularDuracaoEstoque(item.id, item.qty, app.state.exits);
+            
+            const prod = app.state.products.find(p => String(p.ID) === String(item.id));
+            if (prod && prod.PREVISAO_MANUAL) {
+                item.giro.isManual = true;
+                item.giro.manualText = prod.PREVISAO_MANUAL;
+            }
 
             return item;
         });
@@ -755,8 +761,14 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
+                if (r.giro && r.giro.isManual) {
+                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Duplo clique para alterar manual" ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
+                                <div class="text-sm text-primary font-bold">${r.giro.manualText}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Manual</div>
+                            </div>`;
+                }
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
-                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500 cursor-pointer" title="Sem saídas nos últimos 90 dias. Duplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">Sem histórico</div>`;
                 }
                 
                 let cor = 'text-gray-600 dark:text-gray-400';
@@ -768,7 +780,7 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}\nDuplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">
                             <div class="text-sm ${cor}">${tempoStr}</div>
                             ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
                         </div>`;
@@ -1184,11 +1196,12 @@ const app = {
                 const rowNum = index + 2;
                 
                 // Update row. Need all fields.
-                // ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM
+                // ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM, PREVISAO_MANUAL
                 const rowData = [
-                    p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, newStatus, p.CRIADO_EM
+                    p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, newStatus, p.CRIADO_EM, p.PREVISAO_MANUAL || ""
                 ];
 
+                await graph.updateRow('PRODUTOS', 1, ['ID', 'CODIGO', 'TIPO', 'NOME', 'UNIDADE', 'ESTOQUE_MINIMO', 'ATIVO', 'CRIADO_EM', 'PREVISAO_MANUAL']);
                 await graph.updateRow('PRODUTOS', rowNum, rowData);
                 await app.syncData();
                 ui.showToast(`Produto ${newStatus === "Sim" ? "ativado" : "inativado"} com sucesso!`, "success");
@@ -1204,6 +1217,47 @@ const app = {
             } catch (err) {
                 console.error(err);
                 ui.showToast("Erro ao alterar status: " + err.message, "error");
+            } finally {
+                ui.toggleLoading(false);
+            }
+        }
+    },
+
+    setManualPrevisao: async (id, currentVal) => {
+        const result = await Swal.fire({
+            title: 'Previsão Manual',
+            text: 'Digite o texto da previsão (ex: ~2 meses). Deixe em branco para voltar ao cálculo automático:',
+            input: 'text',
+            inputValue: currentVal || '',
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            const val = result.value.trim();
+            const p = app.state.products.find(p => String(p.ID) === String(id));
+            if (!p) return;
+            
+            const index = app.state.products.findIndex(prod => String(prod.ID) === String(id));
+            const rowNum = index + 2;
+            
+            // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM, PREVISAO_MANUAL
+            const rowData = [
+                p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, p.ATIVO || "Sim", p.CRIADO_EM, val
+            ];
+            
+            ui.toggleLoading(true);
+            try {
+                // Ensure header exists to avoid mapping issues
+                await graph.updateRow('PRODUTOS', 1, ['ID', 'CODIGO', 'TIPO', 'NOME', 'UNIDADE', 'ESTOQUE_MINIMO', 'ATIVO', 'CRIADO_EM', 'PREVISAO_MANUAL']);
+                
+                await graph.updateRow('PRODUTOS', rowNum, rowData);
+                await app.syncData();
+                ui.showToast("Previsão atualizada!", "success");
+            } catch (err) {
+                console.error(err);
+                ui.showToast("Erro ao atualizar: " + err.message, "error");
             } finally {
                 ui.toggleLoading(false);
             }
@@ -1562,8 +1616,14 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
+                if (r.giro && r.giro.isManual) {
+                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Duplo clique para alterar manual" ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
+                                <div class="text-sm text-primary font-bold">${r.giro.manualText}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Manual</div>
+                            </div>`;
+                }
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
-                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500 cursor-pointer" title="Sem saídas nos últimos 90 dias. Duplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">Sem histórico</div>`;
                 }
                 
                 let cor = 'text-gray-600 dark:text-gray-400';
@@ -1575,7 +1635,7 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}\nDuplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">
                             <div class="text-sm ${cor}">${tempoStr}</div>
                             ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
                         </div>`;
@@ -1636,8 +1696,14 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
+                if (r.giro && r.giro.isManual) {
+                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Duplo clique para alterar manual" ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
+                                <div class="text-sm text-primary font-bold">${r.giro.manualText}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Manual</div>
+                            </div>`;
+                }
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
-                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500" title="Sem saídas nos últimos 90 dias">Sem histórico</div>`;
+                    return `<div class="text-center text-sm text-gray-400 dark:text-gray-500 cursor-pointer" title="Sem saídas nos últimos 90 dias. Duplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">Sem histórico</div>`;
                 }
                 
                 let cor = 'text-gray-600 dark:text-gray-400';
@@ -1649,7 +1715,7 @@ const app = {
                 if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
                 if (r.qty <= 0) tempoStr = '-';
                 
-                return `<div class="flex flex-col items-center justify-center" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}">
+                return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}\nDuplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">
                             <div class="text-sm ${cor}">${tempoStr}</div>
                             ${r.giro.status !== 'PARADO' && r.giro.duracaoEstoque > 0 && r.qty > 0 ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada}</div>` : ''}
                         </div>`;
@@ -1719,11 +1785,12 @@ const app = {
                 // Row number in Excel/Sheets (Header is row 1, Data starts row 2)
                 const rowNum = index + 2; 
                 
-                // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM
+                // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM, PREVISAO_MANUAL
                 // We update everything except ID and CRIADO_EM
                 const original = app.state.products[index];
-                const rowData = [id, code, type, name, unit, min, original.ATIVO || "Sim", original.CRIADO_EM];
+                const rowData = [id, code, type, name, unit, min, original.ATIVO || "Sim", original.CRIADO_EM, original.PREVISAO_MANUAL || ""];
                 
+                await graph.updateRow('PRODUTOS', 1, ['ID', 'CODIGO', 'TIPO', 'NOME', 'UNIDADE', 'ESTOQUE_MINIMO', 'ATIVO', 'CRIADO_EM', 'PREVISAO_MANUAL']);
                 await graph.updateRow('PRODUTOS', rowNum, rowData);
                 ui.showToast("Produto atualizado!", "success");
                 app.logAction('EDITAR_PRODUTO', `Editou: ${name} (${code})`);
@@ -1731,7 +1798,8 @@ const app = {
                 // New
                 const newId = app.getNextId(app.state.products);
                 const now = new Date().toISOString();
-                const row = [newId, code, type, name, unit, min, "Sim", now];
+                const row = [newId, code, type, name, unit, min, "Sim", now, ""];
+                await graph.updateRow('PRODUTOS', 1, ['ID', 'CODIGO', 'TIPO', 'NOME', 'UNIDADE', 'ESTOQUE_MINIMO', 'ATIVO', 'CRIADO_EM', 'PREVISAO_MANUAL']);
                 await graph.addRow('PRODUTOS', [row]);
                 ui.showToast("Produto cadastrado!", "success");
                 app.logAction('CRIAR_PRODUTO', `Criou: ${name} (${code})`);
