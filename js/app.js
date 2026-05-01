@@ -434,28 +434,28 @@ const app = {
             
             const prod = app.state.products.find(p => String(p.ID) === String(item.id));
             if (prod && prod.PREVISAO_MANUAL) {
-                const manualVal = parseFloat(prod.PREVISAO_MANUAL);
+                const parts = String(prod.PREVISAO_MANUAL).split('|');
+                const manualVal = parseFloat(parts[0]);
+                const manualUnit = parts[1] || 'por semana';
+                
                 if (!isNaN(manualVal) && manualVal > 0) {
                     item.giro.isManual = true;
                     item.giro.manualText = prod.PREVISAO_MANUAL;
                     
-                    // Override default calculations based on manual average
-                    if (item.giro.classificacao === "ALTO_GIRO") {
-                        item.giro.duracaoEstoque = item.qty / manualVal;
-                        item.giro.frequenciaFormatada = `${manualVal} por dia`;
-                    } else if (item.giro.classificacao === "MEDIO_GIRO") {
-                        item.giro.duracaoEstoque = item.qty / manualVal;
-                        item.giro.frequenciaFormatada = `${manualVal} por semana`;
+                    // Set class and calculate based on chosen unit
+                    if (manualUnit === 'por dia') {
+                        item.giro.classificacao = "ALTO_GIRO";
+                        item.giro.unidadeTempo = "dias";
+                    } else if (manualUnit === 'por semana') {
+                        item.giro.classificacao = "MEDIO_GIRO";
+                        item.giro.unidadeTempo = "semanas";
                     } else {
-                        // For BAIXO_GIRO or SEM_SAIDAS (force to BAIXO_GIRO if no history but has manual)
-                        if (item.giro.classificacao === "SEM_SAIDAS") {
-                            item.giro.classificacao = "BAIXO_GIRO";
-                            item.giro.unidadeTempo = "meses";
-                            item.giro.status = item.qty <= 0 ? "ZERADO" : "OK";
-                        }
-                        item.giro.duracaoEstoque = item.qty / manualVal;
-                        item.giro.frequenciaFormatada = `${manualVal} por mês`;
+                        item.giro.classificacao = "BAIXO_GIRO";
+                        item.giro.unidadeTempo = "meses";
                     }
+                    
+                    item.giro.duracaoEstoque = item.qty / manualVal;
+                    item.giro.frequenciaFormatada = `${manualVal} ${manualUnit}`;
                     
                     // Re-evaluate status based on new duration
                     if (item.giro.status !== "PARADO" && item.giro.status !== "ZERADO") {
@@ -1250,21 +1250,53 @@ const app = {
     },
 
     setManualPrevisao: async (id, currentVal) => {
-        const result = await Swal.fire({
+        let defaultNumber = '';
+        let defaultUnit = 'por semana';
+        
+        if (currentVal) {
+            const parts = currentVal.split('|');
+            defaultNumber = parts[0] || '';
+            defaultUnit = parts[1] || 'por semana';
+        }
+
+        const { value: formValues } = await Swal.fire({
             title: 'Média Manual',
-            text: 'Digite apenas o NÚMERO da nova média (o sistema manterá se é por dia/semana/mês). Deixe em branco para voltar ao cálculo automático:',
-            input: 'number',
-            inputAttributes: {
-                step: '0.01'
-            },
-            inputValue: currentVal || '',
+            html: `
+                <div class="flex flex-col gap-4 text-left">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Digite a nova média e escolha a unidade de tempo. Deixe o número em branco para voltar ao cálculo automático.</p>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Média de Saídas (Número)</label>
+                        <input id="swal-input-num" type="number" step="0.01" class="w-full rounded-lg border-gray-300 bg-gray-50 text-sm p-2" value="${defaultNumber}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Unidade de Tempo</label>
+                        <select id="swal-input-unit" class="w-full rounded-lg border-gray-300 bg-gray-50 text-sm p-2">
+                            <option value="por dia" ${defaultUnit === 'por dia' ? 'selected' : ''}>Por Dia</option>
+                            <option value="por semana" ${defaultUnit === 'por semana' ? 'selected' : ''}>Por Semana</option>
+                            <option value="por mês" ${defaultUnit === 'por mês' ? 'selected' : ''}>Por Mês</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            focusConfirm: false,
             showCancelButton: true,
             confirmButtonText: 'Salvar',
-            cancelButtonText: 'Cancelar'
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                return [
+                    document.getElementById('swal-input-num').value,
+                    document.getElementById('swal-input-unit').value
+                ]
+            }
         });
 
-        if (result.isConfirmed) {
-            const val = result.value.trim();
+        if (formValues) {
+            const num = formValues[0].trim();
+            const unit = formValues[1];
+            
+            // If number is empty, clear the manual value
+            const valToSave = num === '' ? '' : `${num}|${unit}`;
+            
             const p = app.state.products.find(p => String(p.ID) === String(id));
             if (!p) return;
             
@@ -1273,7 +1305,7 @@ const app = {
             
             // Columns: ID, CODIGO, TIPO, NOME, UNIDADE, ESTOQUE_MINIMO, ATIVO, CRIADO_EM, PREVISAO_MANUAL
             const rowData = [
-                p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, p.ATIVO || "Sim", p.CRIADO_EM, val
+                p.ID, p.CODIGO, p.TIPO, p.NOME, p.UNIDADE, p.ESTOQUE_MINIMO, p.ATIVO || "Sim", p.CRIADO_EM, valToSave
             ];
             
             ui.toggleLoading(true);
