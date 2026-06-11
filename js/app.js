@@ -457,15 +457,15 @@ const app = {
                     item.giro.duracaoEstoque = item.qty / manualVal;
                     item.giro.frequenciaFormatada = `${manualVal} ${manualUnit}`;
                     
-                    // Re-evaluate status based on new duration
-                    if (item.giro.status !== "PARADO" && item.giro.status !== "ZERADO") {
-                        if (item.giro.duracaoEstoque <= 1 && item.giro.duracaoEstoque > 0) {
-                             item.giro.status = "CRITICO";
-                        } else if (item.giro.duracaoEstoque <= 2 && item.giro.duracaoEstoque > 0) {
-                             item.giro.status = "ATENCAO";
-                        } else {
-                             item.giro.status = "OK";
-                        }
+                    // Force status re-evaluation for manual prediction
+                    if (item.qty <= 0) {
+                        item.giro.status = "ZERADO";
+                    } else if (item.giro.duracaoEstoque <= 1 && item.giro.duracaoEstoque > 0) {
+                        item.giro.status = "CRITICO";
+                    } else if (item.giro.duracaoEstoque <= 2 && item.giro.duracaoEstoque > 0) {
+                        item.giro.status = "ATENCAO";
+                    } else {
+                        item.giro.status = "OK";
                     }
                 }
             }
