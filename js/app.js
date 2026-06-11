@@ -2493,7 +2493,7 @@ const app = {
         try {
             await graph.addRow('ENTRADAS', [row]);
             document.getElementById('form-entry').reset();
-            document.getElementById('entry-date').value = new Date().toISOString().split('T')[0]; // Keep date as today
+            document.getElementById('entry-date').value = date; // Keep last used date
             await app.syncData();
             ui.showToast("Entrada registrada!", "success");
             
@@ -2541,7 +2541,7 @@ const app = {
         try {
             await graph.addRow('SAIDAS', [row]);
             document.getElementById('form-exit').reset();
-            document.getElementById('exit-date').value = new Date().toISOString().split('T')[0]; // Keep date as today
+            document.getElementById('exit-date').value = date; // Keep last used date
             await app.syncData();
             ui.showToast("Saída registrada!", "success");
 
