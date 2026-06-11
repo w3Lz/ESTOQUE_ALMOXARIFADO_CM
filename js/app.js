@@ -1314,6 +1314,16 @@ const app = {
                 await graph.updateRow('PRODUTOS', 1, ['ID', 'CODIGO', 'TIPO', 'NOME', 'UNIDADE', 'ESTOQUE_MINIMO', 'ATIVO', 'CRIADO_EM', 'PREVISAO_MANUAL']);
                 
                 await graph.updateRow('PRODUTOS', rowNum, rowData);
+                
+                // Update local state immediately
+                p.PREVISAO_MANUAL = valToSave;
+                
+                // Recalculate balance with new manual prediction
+                app.calculateBalance();
+                
+                // Force UI refresh
+                app.filterDashboard();
+                
                 await app.syncData();
                 ui.showToast("Previsão atualizada!", "success");
             } catch (err) {
