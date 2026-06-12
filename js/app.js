@@ -27,6 +27,7 @@ const estoqueUtil = {
             return {
                 classificacao: "SEM_SAIDAS",
                 frequenciaSemanal: 0,
+                mediaSemanal: 0,
                 intervaloMedioDias: 0,
                 duracaoEstoque: 0,
                 unidadeTempo: "indefinido",
@@ -110,6 +111,7 @@ const estoqueUtil = {
         return {
             classificacao,
             frequenciaSemanal: parseFloat(frequenciaSemanal.toFixed(2)),
+            mediaSemanal: parseFloat(mediaSemanal.toFixed(2)),
             frequenciaFormatada,
             intervaloMedioDias: Math.round(intervaloMedioDias),
             quantidadeMediaPorSaida: parseFloat(quantidadeMediaPorSaida.toFixed(2)),
@@ -267,7 +269,8 @@ const app = {
         if (viewId === 'entries') activeItem = navItems[2];
         if (viewId === 'exits') activeItem = navItems[3];
         if (viewId === 'reports') activeItem = navItems[4];
-        if (viewId === 'audit') activeItem = navItems[5];
+        if (viewId === 'shopping') activeItem = navItems[5];
+        if (viewId === 'audit') activeItem = navItems[6];
 
         if (activeItem) {
             activeItem.classList.add('active');
@@ -288,6 +291,7 @@ const app = {
             'entries': 'Entradas',
             'exits': 'Saídas',
             'reports': 'Indicadores e Gráficos',
+            'shopping': 'Lista de Compras',
             'audit': 'Auditoria e Logs'
         };
         document.getElementById('page-title').textContent = titles[viewId];
@@ -295,6 +299,11 @@ const app = {
         // Render charts if opening reports view
         if (viewId === 'reports') {
             app.renderCharts();
+        }
+
+        // Render shopping table if opening shopping view
+        if (viewId === 'shopping') {
+            app.renderShoppingTable();
         }
 
         // Render logs if opening audit view
@@ -661,6 +670,8 @@ const app = {
             // Clear but keep first option if it's a filter
             if (id === 'product-type-filter') {
                 el.innerHTML = '<option value="">Todos os Tipos</option>';
+            } else if (id === 'shopping-type-filter') {
+                el.innerHTML = '<option value="">Todos os Grupos</option>';
             } else {
                 el.innerHTML = '';
             }
@@ -673,7 +684,7 @@ const app = {
             });
 
             // Add 'Outro' option only for product form
-            if (id !== 'product-type-filter') {
+            if (id !== 'product-type-filter' && id !== 'shopping-type-filter') {
                 const other = document.createElement('option');
                 other.value = 'OTHER';
                 other.textContent = 'Outro (Adicionar Novo)...';
@@ -689,6 +700,7 @@ const app = {
         populate('prod-unit', units);
         populate('prod-type', types);
         populate('product-type-filter', types);
+        populate('shopping-type-filter', types);
         app.renderDashboardTypeButtons(types);
         populate('entry-user', users);
         populate('exit-user', users);
@@ -856,6 +868,12 @@ const app = {
         // Render Tables with Pagination
         app.renderEntriesTable();
         app.renderExitsTable();
+        
+        // Update Shopping Table if visible
+        const shoppingView = document.getElementById('view-shopping');
+        if (shoppingView && !shoppingView.classList.contains('hidden')) {
+            app.renderShoppingTable();
+        }
     },
 
     renderEntriesTable: () => {
@@ -1181,6 +1199,9 @@ const app = {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
+        // Set font to support UTF-8 characters
+        doc.setFont('helvetica');
+        
         doc.text(title, 14, 15);
         doc.setFontSize(10);
         doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22);
@@ -1190,7 +1211,30 @@ const app = {
             startY: 30,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185] },
-            styles: { fontSize: 8 }
+            styles: { fontSize: 8 },
+            // Use a function to handle special characters
+            didParseCell: function(data) {
+                // Replace special characters with proper UTF-8 equivalents
+                if (data.cell.raw) {
+                    const text = data.cell.raw.textContent || data.cell.raw.innerText || '';
+                    // Common Portuguese character replacements
+                    const cleanText = text
+                        .replace(/[çÇ]/g, 'c')
+                        .replace(/[ãÃ]/g, 'a')
+                        .replace(/[áÁ]/g, 'a')
+                        .replace(/[âÂ]/g, 'a')
+                        .replace(/[éÉ]/g, 'e')
+                        .replace(/[êÊ]/g, 'e')
+                        .replace(/[íÍ]/g, 'i')
+                        .replace(/[óÓ]/g, 'o')
+                        .replace(/[ôÔ]/g, 'o')
+                        .replace(/[õÕ]/g, 'o')
+                        .replace(/[úÚ]/g, 'u')
+                        .replace(/[üÜ]/g, 'u')
+                        .replace(/[ñÑ]/g, 'n');
+                    data.cell.text = cleanText;
+                }
+            }
         });
 
         doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
@@ -1372,6 +1416,435 @@ const app = {
                 console.error("Falha final ao criar/gravar log:", err2);
             }
         }
+    },
+
+    getConsumptionBetween: (startDate, endDate, consumoSemanal) => {
+        if (consumoSemanal <= 0 || endDate <= startDate) return 0;
+        
+        let totalConsumo = 0;
+        let checkDate = new Date(startDate);
+        let daysToFriday = (5 - checkDate.getDay() + 7) % 7;
+        let nextFriday = new Date(checkDate.getTime() + daysToFriday * 24 * 60 * 60 * 1000);
+        nextFriday.setHours(0,0,0,0);
+        
+        if (endDate <= nextFriday) {
+            const dias = Math.max(0, Math.round((endDate - startDate) / (24 * 60 * 60 * 1000)));
+            return (consumoSemanal / 7) * dias;
+        }
+        
+        const diasAteSexta = Math.max(0, Math.round((nextFriday - startDate) / (24 * 60 * 60 * 1000)));
+        totalConsumo += (consumoSemanal / 7) * diasAteSexta;
+        
+        let currentFriday = new Date(nextFriday);
+        while (true) {
+            let nextFridayDate = new Date(currentFriday.getTime() + 7 * 24 * 60 * 60 * 1000);
+            if (endDate <= nextFridayDate) {
+                const diasRestantes = Math.max(0, Math.round((endDate - currentFriday) / (24 * 60 * 60 * 1000)));
+                totalConsumo += (consumoSemanal / 7) * diasRestantes;
+                break;
+            } else {
+                totalConsumo += consumoSemanal;
+                currentFriday = nextFridayDate;
+            }
+        }
+        return totalConsumo;
+    },
+
+    toggleShoppingUrgencyFilter: (urgency) => {
+        if (!app.state.shoppingUrgencyFilters) {
+            app.state.shoppingUrgencyFilters = [];
+        }
+
+        if (urgency === 'ALL') {
+            app.state.shoppingUrgencyFilters = [];
+        } else {
+            const idx = app.state.shoppingUrgencyFilters.indexOf(urgency);
+            if (idx > -1) {
+                app.state.shoppingUrgencyFilters.splice(idx, 1);
+            } else {
+                app.state.shoppingUrgencyFilters.push(urgency);
+            }
+        }
+
+        app.updateShoppingUrgencyButtons();
+        app.renderShoppingTable();
+    },
+
+    updateShoppingUrgencyButtons: () => {
+        const selected = app.state.shoppingUrgencyFilters || [];
+        const isAll = selected.length === 0;
+
+        const setBtnActive = (id, isActive, activeClasses, inactiveClasses) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            
+            const activeArr = activeClasses.split(' ');
+            const inactiveArr = inactiveClasses.split(' ');
+            
+            activeArr.forEach(c => btn.classList.remove(c));
+            inactiveArr.forEach(c => btn.classList.remove(c));
+            
+            if (isActive) {
+                activeArr.forEach(c => btn.classList.add(c));
+            } else {
+                inactiveArr.forEach(c => btn.classList.add(c));
+            }
+        };
+
+        setBtnActive('btn-urgency-all', isAll, 
+            'bg-primary text-white border-primary shadow-sm font-bold', 
+            'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 font-semibold'
+        );
+
+        setBtnActive('btn-urgency-critico', selected.includes('CRITICO'),
+            'bg-red-500 text-white border-red-500 shadow-sm font-bold',
+            'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/10 dark:text-red-300 dark:border-red-900/40 font-semibold'
+        );
+
+        setBtnActive('btn-urgency-atencao', selected.includes('ATENCAO'),
+            'bg-yellow-500 text-white border-yellow-500 shadow-sm font-bold',
+            'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 dark:bg-yellow-950/10 dark:text-yellow-300 dark:border-yellow-900/40 font-semibold'
+        );
+
+        setBtnActive('btn-urgency-planejado', selected.includes('PLANEJADO'),
+            'bg-blue-500 text-white border-blue-500 shadow-sm font-bold',
+            'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/10 dark:text-blue-300 dark:border-blue-900/30 font-semibold'
+        );
+
+        setBtnActive('btn-urgency-tranquilo', selected.includes('TRANQUILO'),
+            'bg-green-500 text-white border-green-500 shadow-sm font-bold',
+            'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950/10 dark:text-green-300 dark:border-green-900/30 font-semibold'
+        );
+
+        setBtnActive('btn-urgency-sem-previsao', selected.includes('SEM_PREVISAO'),
+            'bg-gray-500 text-white border-gray-500 shadow-sm font-bold',
+            'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 font-semibold'
+        );
+    },
+
+    renderShoppingTable: () => {
+        const searchVal = strUtil.normalize(document.getElementById('shopping-search').value || '');
+        const urgencyFilterValues = app.state.shoppingUrgencyFilters || [];
+        const typeFilter = document.getElementById('shopping-type-filter').value || '';
+        const tbody = document.querySelector('#shopping-table tbody');
+        
+        if (!tbody) return;
+
+        // Initialize Month Filter dynamic options if empty
+        const monthFilter = document.getElementById('shopping-month-filter');
+        if (monthFilter && monthFilter.options.length === 0) {
+            const monthsPt = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const today = new Date();
+            monthFilter.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                const mName = monthsPt[d.getMonth()];
+                const yName = d.getFullYear();
+                
+                // Value is the last day of that month
+                const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+                const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                
+                const label = i === 0 ? `Mês Atual (${mName}/${yName})` : `${mName}/${yName}`;
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = label;
+                monthFilter.appendChild(opt);
+            }
+        }
+
+        // Initialize Purchase Date if empty
+        const purchaseDateInput = document.getElementById('shopping-purchase-date');
+        if (purchaseDateInput && !purchaseDateInput.value) {
+            purchaseDateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Sync urgency button UI classes
+        app.updateShoppingUrgencyButtons();
+
+        tbody.innerHTML = '';
+
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+
+        // Parse scheduled purchase date
+        let dataCompra = hoje;
+        if (purchaseDateInput && purchaseDateInput.value) {
+            const parts = purchaseDateInput.value.split('-');
+            dataCompra = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            dataCompra.setHours(0,0,0,0);
+        }
+
+        // Parse target month end date from filter
+        let dataFimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        if (monthFilter && monthFilter.value) {
+            const parts = monthFilter.value.split('-');
+            dataFimMes = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            dataFimMes.setHours(23,59,59,999);
+        }
+
+        // Set dynamic Necessity column header label based on selected month
+        const diasFalta = Math.max(0, Math.round((dataFimMes - hoje) / (24 * 60 * 60 * 1000)));
+        const necessityHeader = document.getElementById('shopping-necessity-header');
+        if (necessityHeader) {
+            necessityHeader.textContent = `Necessidade (Próx. ${diasFalta} dias)`;
+        }
+
+        const allComputedItems = [];
+
+        // 1. Calculate and map all active items
+        app.state.balance.forEach(item => {
+            const prod = app.state.products.find(p => String(p.ID) === String(item.id));
+            
+            // Skip inactive products
+            if (prod && prod.ATIVO && String(prod.ATIVO).toUpperCase() === 'NÃO') {
+                return;
+            }
+
+            let consumoSemanal = 0;
+            let isManual = false;
+
+            if (prod && prod.PREVISAO_MANUAL) {
+                const parts = String(prod.PREVISAO_MANUAL).split('|');
+                const val = parseFloat(parts[0]);
+                const unit = parts[1] || 'por semana';
+                if (!isNaN(val) && val > 0) {
+                    isManual = true;
+                    if (unit === 'por dia') {
+                        consumoSemanal = val * 7;
+                    } else if (unit === 'por semana') {
+                        consumoSemanal = val;
+                    } else if (unit === 'por mês') {
+                        consumoSemanal = val / 4.33;
+                    }
+                }
+            } else if (item.giro && item.giro.classificacao !== 'SEM_SAIDAS') {
+                consumoSemanal = item.giro.mediaSemanal || 0;
+            }
+
+            // Arredondar Consumo Semanal para cima (inteiro) conforme solicitado
+            consumoSemanal = Math.ceil(consumoSemanal);
+
+            // Calculate Stock Depletion Date and weeks remaining using Friday-aligned model
+            let dataEsgotamento = null;
+            let runsOutBeforePurchase = false;
+            let semanasRestantes = Infinity;
+
+            if (consumoSemanal > 0) {
+                let currentStock = item.qty;
+                // Find next Friday starting from hoje
+                let checkDate = new Date(hoje);
+                let daysToFriday = (5 - checkDate.getDay() + 7) % 7;
+                let nextFriday = new Date(checkDate.getTime() + daysToFriday * 24 * 60 * 60 * 1000);
+                nextFriday.setHours(0,0,0,0);
+                
+                const diasAtePrimeiraSexta = Math.max(0, Math.round((nextFriday - hoje) / (24 * 60 * 60 * 1000)));
+                const consumoAtePrimeiraSexta = (consumoSemanal / 7) * diasAtePrimeiraSexta;
+                
+                if (currentStock < consumoAtePrimeiraSexta) {
+                    // Runs out before or on the first Friday
+                    dataEsgotamento = nextFriday;
+                } else {
+                    currentStock -= consumoAtePrimeiraSexta;
+                    // Move week by week
+                    let currentFriday = new Date(nextFriday);
+                    while (true) {
+                        if (currentStock < consumoSemanal) {
+                            dataEsgotamento = currentFriday;
+                            break;
+                        }
+                        currentStock -= consumoSemanal;
+                        currentFriday = new Date(currentFriday.getTime() + 7 * 24 * 60 * 60 * 1000);
+                        
+                        // Prevent infinite loop
+                        if (currentFriday.getTime() > hoje.getTime() + 10 * 365 * 24 * 60 * 60 * 1000) {
+                            dataEsgotamento = currentFriday;
+                            break;
+                        }
+                    }
+                }
+                runsOutBeforePurchase = (dataEsgotamento < dataCompra);
+                semanasRestantes = (dataEsgotamento - hoje) / (7 * 24 * 60 * 60 * 1000);
+                if (semanasRestantes < 0) semanasRestantes = 0;
+            } else if (item.qty <= 0) {
+                semanasRestantes = 0;
+                runsOutBeforePurchase = (dataCompra > hoje);
+            }
+
+            // Determine Urgency
+            let urgency = 'SEM_PREVISAO';
+            if (item.qty <= 0 || runsOutBeforePurchase) {
+                urgency = 'CRITICO';
+            } else if (consumoSemanal > 0) {
+                if (semanasRestantes < 1) {
+                    urgency = 'CRITICO';
+                } else if (semanasRestantes <= 2) {
+                    urgency = 'ATENCAO';
+                } else if (semanasRestantes <= 4) {
+                    urgency = 'PLANEJADO';
+                } else {
+                    urgency = 'TRANQUILO';
+                }
+            }
+
+            // Format Best Purchase Day and alerts
+            let melhorDiaCompraStr = 'Sem previsão';
+            if (item.qty <= 0) {
+                melhorDiaCompraStr = 'Imediato 🚨';
+            } else if (consumoSemanal > 0 && dataEsgotamento) {
+                melhorDiaCompraStr = dataEsgotamento.toLocaleDateString('pt-BR');
+            }
+
+            // Calculate Required Quantity using Friday-aligned model
+            let qtdNecessaria = 0;
+            if (consumoSemanal > 0) {
+                const consumoAteCompra = app.getConsumptionBetween(hoje, dataCompra, consumoSemanal);
+                const estoqueNaCompra = Math.max(0, item.qty - consumoAteCompra);
+                const consumoCompraAteFim = app.getConsumptionBetween(dataCompra, dataFimMes, consumoSemanal);
+                
+                // Rounded UP to complete integers
+                qtdNecessaria = Math.ceil(consumoCompraAteFim - estoqueNaCompra);
+                if (qtdNecessaria < 0) qtdNecessaria = 0;
+            } else if (item.qty <= 0) {
+                qtdNecessaria = item.min || 0;
+            }
+
+            allComputedItems.push({
+                id: item.id,
+                code: item.code || '-',
+                name: item.name || 'Sem nome',
+                type: item.type || 'MATERIAL',
+                unit: item.unit || 'UN',
+                qty: item.qty,
+                min: item.min,
+                consumoSemanal,
+                isManual,
+                semanasRestantes,
+                urgency,
+                melhorDiaCompraStr,
+                dataEsgotamento,
+                runsOutBeforePurchase,
+                qtdNecessaria
+            });
+        });
+
+        // 2. Update Summary Cards (filtered by Search and Group filters, but NOT by Urgency)
+        const searchAndTypeFilteredItems = allComputedItems.filter(item => {
+            const matchesSearch = strUtil.normalize(item.name).includes(searchVal) || 
+                                 strUtil.normalize(item.code).includes(searchVal);
+            const matchesType = typeFilter === '' || item.type === typeFilter;
+            return matchesSearch && matchesType;
+        });
+
+        const countCritical = searchAndTypeFilteredItems.filter(i => i.urgency === 'CRITICO').length;
+        const countWarning = searchAndTypeFilteredItems.filter(i => i.urgency === 'ATENCAO').length;
+        const countPlanned = searchAndTypeFilteredItems.filter(i => i.urgency === 'PLANEJADO').length;
+
+        document.getElementById('shopping-summary-critical').textContent = countCritical;
+        document.getElementById('shopping-summary-warning').textContent = countWarning;
+        document.getElementById('shopping-summary-planned').textContent = countPlanned;
+
+        // 3. Apply Urgency Filter for final table
+        const filteredItems = searchAndTypeFilteredItems.filter(item => {
+            return urgencyFilterValues.length === 0 || urgencyFilterValues.includes(item.urgency);
+        });
+
+        // Sort by primary (urgency CRITICO -> ATENCAO -> PLANEJADO -> TRANQUILO -> SEM_PREVISAO)
+        // and secondary (current stock quantity ascending)
+        const urgencyOrder = { 'CRITICO': 0, 'ATENCAO': 1, 'PLANEJADO': 2, 'TRANQUILO': 3, 'SEM_PREVISAO': 4 };
+        filteredItems.sort((a, b) => {
+            const orderA = urgencyOrder[a.urgency] ?? 999;
+            const orderB = urgencyOrder[b.urgency] ?? 999;
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            return (a.qty || 0) - (b.qty || 0);
+        });
+
+        // 4. Render Table Rows
+        if (filteredItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-gray-500">Nenhum item de compra necessário ou encontrado para os filtros selecionados.</td></tr>`;
+            return;
+        }
+
+        filteredItems.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            // Choose row color based on status
+            let rowColorClass = "";
+            if (item.urgency === 'CRITICO') {
+                rowColorClass = "bg-red-50/70 hover:bg-red-100/70 dark:bg-red-950/20 dark:hover:bg-red-950/30 text-red-950 dark:text-red-200 border-b border-red-100 dark:border-red-900/40";
+            } else if (item.urgency === 'ATENCAO') {
+                rowColorClass = "bg-yellow-50/70 hover:bg-yellow-100/70 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/30 text-yellow-950 dark:text-yellow-200 border-b border-yellow-100 dark:border-yellow-900/40";
+            } else if (item.urgency === 'PLANEJADO') {
+                rowColorClass = "bg-blue-50/70 hover:bg-blue-100/70 dark:bg-blue-950/10 dark:hover:bg-blue-950/20 text-blue-950 dark:text-blue-200 border-b border-blue-100 dark:border-blue-900/30";
+            } else if (item.urgency === 'TRANQUILO') {
+                rowColorClass = "bg-green-50/70 hover:bg-green-100/70 dark:bg-green-950/10 dark:hover:bg-green-950/20 text-green-950 dark:text-green-200 border-b border-green-100 dark:border-green-900/30";
+            } else {
+                rowColorClass = "hover:bg-gray-50/50 dark:hover:bg-white/5 border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-gray-200";
+            }
+            
+            tr.className = `${rowColorClass} transition-colors last:border-0`;
+            
+            // Urgency Badge
+            let urgencyBadge = '';
+            if (item.urgency === 'CRITICO') {
+                urgencyBadge = `<span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">🚨 Crítico</span>`;
+            } else if (item.urgency === 'ATENCAO') {
+                urgencyBadge = `<span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-0.5 text-xs font-bold text-yellow-700 dark:text-yellow-400">⚠️ Atenção</span>`;
+            } else if (item.urgency === 'PLANEJADO') {
+                urgencyBadge = `<span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-400">📅 Planejado</span>`;
+            } else if (item.urgency === 'TRANQUILO') {
+                urgencyBadge = `<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">✅ Tranquilo</span>`;
+            } else {
+                urgencyBadge = `<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-bold text-gray-700 dark:text-gray-300">❓ Sem Previsão</span>`;
+            }
+
+            // Consumo Semanal formatting (Integer)
+            const consumoStr = item.consumoSemanal > 0 
+                ? `${item.consumoSemanal} / sem ${item.isManual ? '<span class="text-[10px] text-primary dark:text-accent font-bold">(Manual)</span>' : ''}`
+                : '-';
+
+            // Recommended (Necessidade - Integer)
+            const recStr = item.qtdNecessaria > 0 
+                ? `<span class="font-bold text-primary dark:text-accent">${item.qtdNecessaria}</span> ${item.unit}`
+                : '<span class="text-green-600 dark:text-green-400 font-semibold">Suficiente</span>';
+
+            // Best purchase date & alert
+            let diaCompraTdHTML = '';
+            if (item.runsOutBeforePurchase) {
+                if (item.qty <= 0) {
+                    diaCompraTdHTML = `
+                        <div class="flex flex-col items-center text-red-600 dark:text-red-400 font-bold">
+                            <span>🚨 Imediato</span>
+                            <span class="text-[9px] uppercase tracking-wider font-semibold">Sem Estoque</span>
+                        </div>
+                    `;
+                } else {
+                    diaCompraTdHTML = `
+                        <div class="flex flex-col items-center text-red-600 dark:text-red-400 font-bold">
+                            <span>⚠️ ${item.melhorDiaCompraStr}</span>
+                            <span class="text-[9px] uppercase tracking-wider font-semibold">Acaba antes da compra</span>
+                        </div>
+                    `;
+                }
+            } else {
+                diaCompraTdHTML = `<span>${item.melhorDiaCompraStr}</span>`;
+            }
+
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white">${item.code}</td>
+                <td class="px-6 py-4 font-medium">${item.name}</td>
+                <td class="px-6 py-4">${item.type}</td>
+                <td class="px-6 py-4 text-right font-semibold">${Math.round(item.qty)} ${item.unit}</td>
+                <td class="px-6 py-4 text-center">${consumoStr}</td>
+                <td class="px-6 py-4 text-center font-semibold">${diaCompraTdHTML}</td>
+                <td class="px-6 py-4 text-right">${recStr}</td>
+                <td class="px-6 py-4 text-center">${urgencyBadge}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
     },
 
     renderAuditLogs: () => {
