@@ -1601,8 +1601,10 @@ const app = {
                 return;
             }
 
-            let consumoSemanal = 0;
+            let consumoSemanalRaw = 0;
+            let consumoExibicao = 0;
             let isManual = false;
+            let consumoUnit = 'por semana';
 
             if (prod && prod.PREVISAO_MANUAL) {
                 const parts = String(prod.PREVISAO_MANUAL).split('|');
@@ -1610,27 +1612,27 @@ const app = {
                 const unit = parts[1] || 'por semana';
                 if (!isNaN(val) && val > 0) {
                     isManual = true;
+                    consumoUnit = unit;
+                    consumoExibicao = val;
                     if (unit === 'por dia') {
-                        consumoSemanal = val * 7;
+                        consumoSemanalRaw = val * 7;
                     } else if (unit === 'por semana') {
-                        consumoSemanal = val;
+                        consumoSemanalRaw = val;
                     } else if (unit === 'por mês') {
-                        consumoSemanal = val / 4.33;
+                        consumoSemanalRaw = val / 4.33;
                     }
                 }
             } else if (item.giro && item.giro.classificacao !== 'SEM_SAIDAS') {
-                consumoSemanal = item.giro.mediaSemanal || 0;
+                consumoSemanalRaw = item.giro.mediaSemanal || 0;
+                consumoExibicao = Math.ceil(consumoSemanalRaw);
             }
 
-            // Arredondar Consumo Semanal para cima (inteiro) conforme solicitado
-            consumoSemanal = Math.ceil(consumoSemanal);
-
-            // Calculate Stock Depletion Date and weeks remaining using Friday-aligned model
+            // Calculate Stock Depletion Date and weeks remaining using Friday-aligned model with raw consumption
             let dataEsgotamento = null;
             let runsOutBeforePurchase = false;
             let semanasRestantes = Infinity;
 
-            if (consumoSemanal > 0) {
+            if (consumoSemanalRaw > 0) {
                 let currentStock = item.qty;
                 // Find next Friday starting from hoje
                 let checkDate = new Date(hoje);
@@ -1639,7 +1641,7 @@ const app = {
                 nextFriday.setHours(0,0,0,0);
                 
                 const diasAtePrimeiraSexta = Math.max(0, Math.round((nextFriday - hoje) / (24 * 60 * 60 * 1000)));
-                const consumoAtePrimeiraSexta = (consumoSemanal / 7) * diasAtePrimeiraSexta;
+                const consumoAtePrimeiraSexta = (consumoSemanalRaw / 7) * diasAtePrimeiraSexta;
                 
                 if (currentStock < consumoAtePrimeiraSexta) {
                     // Runs out before or on the first Friday
@@ -1649,11 +1651,11 @@ const app = {
                     // Move week by week
                     let currentFriday = new Date(nextFriday);
                     while (true) {
-                        if (currentStock < consumoSemanal) {
+                        if (currentStock < consumoSemanalRaw) {
                             dataEsgotamento = currentFriday;
                             break;
                         }
-                        currentStock -= consumoSemanal;
+                        currentStock -= consumoSemanalRaw;
                         currentFriday = new Date(currentFriday.getTime() + 7 * 24 * 60 * 60 * 1000);
                         
                         // Prevent infinite loop
@@ -1675,7 +1677,7 @@ const app = {
             let urgency = 'SEM_PREVISAO';
             if (item.qty <= 0 || runsOutBeforePurchase) {
                 urgency = 'CRITICO';
-            } else if (consumoSemanal > 0) {
+            } else if (consumoSemanalRaw > 0) {
                 if (semanasRestantes < 1) {
                     urgency = 'CRITICO';
                 } else if (semanasRestantes <= 2) {
@@ -1691,16 +1693,16 @@ const app = {
             let melhorDiaCompraStr = 'Sem previsão';
             if (item.qty <= 0) {
                 melhorDiaCompraStr = 'Imediato 🚨';
-            } else if (consumoSemanal > 0 && dataEsgotamento) {
+            } else if (consumoSemanalRaw > 0 && dataEsgotamento) {
                 melhorDiaCompraStr = dataEsgotamento.toLocaleDateString('pt-BR');
             }
 
-            // Calculate Required Quantity using Friday-aligned model
+            // Calculate Required Quantity using Friday-aligned model with raw consumption
             let qtdNecessaria = 0;
-            if (consumoSemanal > 0) {
-                const consumoAteCompra = app.getConsumptionBetween(hoje, dataCompra, consumoSemanal);
+            if (consumoSemanalRaw > 0) {
+                const consumoAteCompra = app.getConsumptionBetween(hoje, dataCompra, consumoSemanalRaw);
                 const estoqueNaCompra = Math.max(0, item.qty - consumoAteCompra);
-                const consumoCompraAteFim = app.getConsumptionBetween(dataCompra, dataFimMes, consumoSemanal);
+                const consumoCompraAteFim = app.getConsumptionBetween(dataCompra, dataFimMes, consumoSemanalRaw);
                 
                 // Rounded UP to complete integers
                 qtdNecessaria = Math.ceil(consumoCompraAteFim - estoqueNaCompra);
@@ -1717,7 +1719,9 @@ const app = {
                 unit: item.unit || 'UN',
                 qty: item.qty,
                 min: item.min,
-                consumoSemanal,
+                consumoSemanalRaw,
+                consumoExibicao,
+                consumoUnit,
                 isManual,
                 semanasRestantes,
                 urgency,
@@ -1749,8 +1753,10 @@ const app = {
             return urgencyFilterValues.length === 0 || urgencyFilterValues.includes(item.urgency);
         });
 
-        // Sort by primary (urgency CRITICO -> ATENCAO -> PLANEJADO -> TRANQUILO -> SEM_PREVISAO)
-        // and secondary (current stock quantity ascending)
+        // Sort by three levels:
+        // 1. Urgency (CRITICO -> ATENCAO -> PLANEJADO -> TRANQUILO -> SEM_PREVISAO)
+        // 2. Needed quantity descending (from largest necessity to smallest)
+        // 3. Current stock quantity ascending (from lowest stock to highest)
         const urgencyOrder = { 'CRITICO': 0, 'ATENCAO': 1, 'PLANEJADO': 2, 'TRANQUILO': 3, 'SEM_PREVISAO': 4 };
         filteredItems.sort((a, b) => {
             const orderA = urgencyOrder[a.urgency] ?? 999;
@@ -1758,6 +1764,15 @@ const app = {
             if (orderA !== orderB) {
                 return orderA - orderB;
             }
+            
+            // Level 2: Needed quantity descending
+            const needA = a.qtdNecessaria || 0;
+            const needB = b.qtdNecessaria || 0;
+            if (needA !== needB) {
+                return needB - needA;
+            }
+            
+            // Level 3: Stock quantity ascending
             return (a.qty || 0) - (b.qty || 0);
         });
 
@@ -1800,9 +1815,15 @@ const app = {
                 urgencyBadge = `<span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-bold text-gray-700 dark:text-gray-300">❓ Sem Previsão</span>`;
             }
 
-            // Consumo Semanal formatting (Integer)
-            const consumoStr = item.consumoSemanal > 0 
-                ? `${item.consumoSemanal} / sem ${item.isManual ? '<span class="text-[10px] text-primary dark:text-accent font-bold">(Manual)</span>' : ''}`
+            // Consumo formatting based on original unit (Integer)
+            let unitLabel = '/ sem';
+            if (item.consumoUnit === 'por dia') {
+                unitLabel = '/ dia';
+            } else if (item.consumoUnit === 'por mês') {
+                unitLabel = '/ mês';
+            }
+            const consumoStr = item.consumoSemanalRaw > 0 
+                ? `${item.consumoExibicao} ${unitLabel} ${item.isManual ? '<span class="text-[10px] text-primary dark:text-accent font-bold">(Manual)</span>' : ''}`
                 : '-';
 
             // Recommended (Necessidade - Integer)
