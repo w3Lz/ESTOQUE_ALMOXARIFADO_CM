@@ -221,6 +221,7 @@ const app = {
         activeSearchForm: null, // 'entry' or 'exit'
         dashboardTypeFilter: null,
         showInactive: localStorage.getItem('showInactive') === 'true', // Load state
+        skipNextWeek: true, // Pular próxima semana por padrão na lista de compras
         pagination: {
             entries: { page: 1, limit: 10 },
             exits: { page: 1, limit: 10 },
@@ -1489,6 +1490,57 @@ const app = {
         app.renderShoppingTable();
     },
 
+    toggleSkipNextWeek: () => {
+        app.state.skipNextWeek = !app.state.skipNextWeek;
+        app.updateSkipNextWeekButton();
+        app.renderShoppingTable();
+    },
+
+    updateSkipNextWeekButton: () => {
+        const btn = document.getElementById('btn-skip-next-week');
+        if (!btn) return;
+        
+        if (app.state.skipNextWeek) {
+            btn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-emerald-500 bg-emerald-600 text-white shadow-sm animate-contour-green";
+            btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">next_week</span> Pular Próxima Semana`;
+        } else {
+            btn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
+            btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">arrow_forward</span> Contar Próxima Semana`;
+        }
+
+        // Update interactive tooltip with dynamic dates
+        const tooltip = document.getElementById('skip-next-week-tooltip');
+        if (tooltip) {
+            const hojeReal = new Date();
+            hojeReal.setHours(0,0,0,0);
+            
+            let checkDate = new Date(hojeReal);
+            let daysToFriday = (5 - checkDate.getDay() + 7) % 7;
+            let nextFriday = new Date(checkDate.getTime() + daysToFriday * 24 * 60 * 60 * 1000);
+            nextFriday.setHours(0,0,0,0);
+
+            const dHoje = hojeReal.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+            const dSexta = nextFriday.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+            
+            const dSabadoSeguinte = new Date(nextFriday.getTime() + 24 * 60 * 60 * 1000);
+            const dSeguinteStr = dSabadoSeguinte.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+
+            if (app.state.skipNextWeek) {
+                tooltip.innerHTML = `
+                    <div class="font-bold text-emerald-400 mb-1">Pular Semana Ativado (Recomendado)</div>
+                    <div>Os materiais necessários para a semana de <b>${dHoje} a ${dSexta}</b> já estão garantidos por fora.</div>
+                    <div class="mt-1.5 text-gray-300">O estoque de hoje é poupado inteiramente para ser usado a partir de <b>${dSeguinteStr}</b> em diante.</div>
+                `;
+            } else {
+                tooltip.innerHTML = `
+                    <div class="font-bold text-yellow-400 mb-1">Contar Próxima Semana</div>
+                    <div>O estoque atual é consumido normalmente desde hoje (<b>${dHoje}</b>).</div>
+                    <div class="mt-1.5 text-gray-300">As compras sugeridas servirão para repor e cobrir o consumo imediato a partir de <b>hoje</b>.</div>
+                `;
+            }
+        }
+    },
+
     updateShoppingUrgencyButtons: () => {
         const selected = app.state.shoppingUrgencyFilters || [];
         const isAll = selected.length === 0;
@@ -1572,19 +1624,28 @@ const app = {
             }
         }
 
-        // Initialize Purchase Date if empty
-        const purchaseDateInput = document.getElementById('shopping-purchase-date');
-        if (purchaseDateInput && !purchaseDateInput.value) {
-            purchaseDateInput.value = new Date().toISOString().split('T')[0];
-        }
-
         // Sync urgency button UI classes
         app.updateShoppingUrgencyButtons();
+        app.updateSkipNextWeekButton();
 
         tbody.innerHTML = '';
 
-        const hoje = new Date();
-        hoje.setHours(0,0,0,0);
+        const hojeReal = new Date();
+        hojeReal.setHours(0,0,0,0);
+
+        const hoje = new Date(hojeReal);
+        if (app.state.skipNextWeek) {
+            hoje.setDate(hoje.getDate() + 7);
+        }
+
+        // Initialize Purchase Date if empty or if skipNextWeek was toggled
+        const purchaseDateInput = document.getElementById('shopping-purchase-date');
+        if (purchaseDateInput) {
+            if (!purchaseDateInput.value || purchaseDateInput.dataset.lastSkipState !== String(app.state.skipNextWeek)) {
+                purchaseDateInput.value = hoje.toISOString().split('T')[0];
+                purchaseDateInput.dataset.lastSkipState = String(app.state.skipNextWeek);
+            }
+        }
 
         // Parse scheduled purchase date
         let dataCompra = hoje;
@@ -1642,8 +1703,8 @@ const app = {
                     }
                 }
             } else if (item.giro && item.giro.classificacao !== 'SEM_SAIDAS') {
-                consumoSemanalRaw = item.giro.mediaSemanal || 0;
-                consumoExibicao = Math.ceil(consumoSemanalRaw);
+                consumoSemanalRaw = Math.ceil(item.giro.mediaSemanal || 0);
+                consumoExibicao = consumoSemanalRaw;
             }
 
             // Calculate Stock Depletion Date and weeks remaining using Friday-aligned model with raw consumption
@@ -1653,6 +1714,7 @@ const app = {
 
             if (consumoSemanalRaw > 0) {
                 let currentStock = item.qty;
+
                 // Find next Friday starting from hoje
                 let checkDate = new Date(hoje);
                 let daysToFriday = (5 - checkDate.getDay() + 7) % 7;
@@ -1719,8 +1781,9 @@ const app = {
             // Calculate Required Quantity using Friday-aligned model with raw consumption
             let qtdNecessaria = 0;
             if (consumoSemanalRaw > 0) {
+                let startingStockForQty = item.qty;
                 const consumoAteCompra = app.getConsumptionBetween(hoje, dataCompra, consumoSemanalRaw);
-                const estoqueNaCompra = Math.max(0, item.qty - consumoAteCompra);
+                const estoqueNaCompra = Math.max(0, startingStockForQty - consumoAteCompra);
                 const consumoCompraAteFim = app.getConsumptionBetween(dataCompra, dataFimMes, consumoSemanalRaw);
                 
                 // Rounded UP to complete integers
@@ -1772,10 +1835,12 @@ const app = {
             return urgencyFilterValues.length === 0 || urgencyFilterValues.includes(item.urgency);
         });
 
-        // Sort by three levels:
+        // Sort by five levels:
         // 1. Urgency (CRITICO -> ATENCAO -> PLANEJADO -> TRANQUILO -> SEM_PREVISAO)
-        // 2. Needed quantity descending (from largest necessity to smallest)
-        // 3. Current stock quantity ascending (from lowest stock to highest)
+        // 2. Immediate purchase ("Imediato 🚨" / stock <= 0 goes first)
+        // 3. Depletion date ascending (earliest date first, nearest to furthest)
+        // 4. Needed quantity descending (from largest necessity to smallest)
+        // 5. Current stock quantity ascending (from lowest stock to highest)
         const urgencyOrder = { 'CRITICO': 0, 'ATENCAO': 1, 'PLANEJADO': 2, 'TRANQUILO': 3, 'SEM_PREVISAO': 4 };
         filteredItems.sort((a, b) => {
             const orderA = urgencyOrder[a.urgency] ?? 999;
@@ -1784,14 +1849,28 @@ const app = {
                 return orderA - orderB;
             }
             
-            // Level 2: Needed quantity descending
+            // Level 2: Immediate purchase ("Imediato 🚨" / stock <= 0 goes first)
+            const isImediatoA = (a.qty <= 0) ? 0 : 1;
+            const isImediatoB = (b.qty <= 0) ? 0 : 1;
+            if (isImediatoA !== isImediatoB) {
+                return isImediatoA - isImediatoB;
+            }
+
+            // Level 3: Depletion date ascending (earliest date first, nearest to furthest)
+            const timeA = a.dataEsgotamento ? a.dataEsgotamento.getTime() : Infinity;
+            const timeB = b.dataEsgotamento ? b.dataEsgotamento.getTime() : Infinity;
+            if (timeA !== timeB) {
+                return timeA - timeB;
+            }
+            
+            // Level 4: Needed quantity descending
             const needA = a.qtdNecessaria || 0;
             const needB = b.qtdNecessaria || 0;
             if (needA !== needB) {
                 return needB - needA;
             }
             
-            // Level 3: Stock quantity ascending
+            // Level 5: Stock quantity ascending
             return (a.qty || 0) - (b.qty || 0);
         });
 

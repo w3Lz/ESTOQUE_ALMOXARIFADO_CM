@@ -96,3 +96,23 @@ div:where(.swal2-container) div:where(.swal2-popup) {
         content: " - Relatório de Estoque";
     }
 }
+
+/* Animated green border/contour for the active skip next week button */
+@keyframes greenContourPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        border-color: rgba(16, 185, 129, 1);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+        border-color: rgba(16, 185, 129, 0.5);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        border-color: rgba(16, 185, 129, 1);
+    }
+}
+
+.animate-contour-green {
+    animation: greenContourPulse 1.8s infinite;
+}
