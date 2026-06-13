@@ -2200,10 +2200,29 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
+                // Se for manual, sempre exibe as informações manuais primeiro
+                if (r.giro && r.giro.isManual) {
+                    let cor = 'text-gray-600 dark:text-gray-400';
+                    if (r.giro.status === 'CRITICO' || r.giro.status === 'ZERADO') cor = 'text-red-600 dark:text-red-400 font-bold';
+                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                    
+                    let tempoStr = r.giro.duracaoEstoque > 0 ? `~${Math.round(r.giro.duracaoEstoque)} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                    if (r.qty <= 0) tempoStr = '-';
+                    
+                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}\nDuplo clique para editar média manual." ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
+                                <div class="text-sm ${cor}">${tempoStr}</div>
+                                <div class="text-xs text-primary font-bold mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada} (Manual)</div>
+                            </div>`;
+                }
+
+                // Caso não tenha previsão manual, verifica se não tem saídas
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
                     return `<div class="text-center text-sm text-gray-400 dark:text-gray-500 cursor-pointer" title="Sem saídas nos últimos 90 dias. Duplo clique para adicionar média manual." ondblclick="app.setManualPrevisao('${r.id}', '')">Sem histórico</div>`;
                 }
                 
+                // Caso normal com histórico
                 let cor = 'text-gray-600 dark:text-gray-400';
                 if (r.giro.status === 'CRITICO') cor = 'text-red-600 dark:text-red-400 font-bold';
                 else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
@@ -2274,12 +2293,23 @@ const app = {
             { field: 'type' },
             { field: 'qty', render: (r) => `<div class="text-center text-xl font-bold">${Math.floor(r.qty)}</div>` },
             { field: 'giro', render: (r) => {
+                // Se for manual, sempre exibe as informações manuais primeiro
                 if (r.giro && r.giro.isManual) {
-                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Duplo clique para alterar manual" ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
-                                <div class="text-sm text-primary font-bold">${r.giro.manualText}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-none">Manual</div>
+                    let cor = 'text-gray-600 dark:text-gray-400';
+                    if (r.giro.status === 'CRITICO' || r.giro.status === 'ZERADO') cor = 'text-red-600 dark:text-red-400 font-bold';
+                    else if (r.giro.status === 'ATENCAO') cor = 'text-yellow-600 dark:text-yellow-500 font-bold';
+                    else if (r.giro.status === 'PARADO') cor = 'text-gray-400 dark:text-gray-500 italic';
+                    
+                    let tempoStr = r.giro.duracaoEstoque > 0 ? `~${Math.round(r.giro.duracaoEstoque)} ${r.giro.unidadeTempo}` : 'Sem previsão';
+                    if (r.giro.status === 'PARADO') tempoStr = `Parado há ${r.giro.diasSemSair} dias`;
+                    if (r.qty <= 0) tempoStr = '-';
+                    
+                    return `<div class="flex flex-col items-center justify-center cursor-pointer" title="Giro: ${r.giro.classificacao.replace('_', ' ')}\nMédia: ${r.giro.frequenciaSemanal} saídas/sem\nÚltima: ${r.giro.ultimaSaida}\nDuplo clique para editar média manual." ondblclick="app.setManualPrevisao('${r.id}', '${r.giro.manualText}')">
+                                <div class="text-sm ${cor}">${tempoStr}</div>
+                                <div class="text-xs text-primary font-bold mt-0.5 leading-none">Média: ${r.giro.frequenciaFormatada} (Manual)</div>
                             </div>`;
                 }
+
                 if (!r.giro || r.giro.classificacao === 'SEM_SAIDAS') {
                     return `<div class="text-center text-sm text-gray-400 dark:text-gray-500 cursor-pointer" title="Sem saídas nos últimos 90 dias. Duplo clique para adicionar previsão manual." ondblclick="app.setManualPrevisao('${r.id}', '')">Sem histórico</div>`;
                 }
